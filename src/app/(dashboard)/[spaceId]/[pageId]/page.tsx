@@ -15,6 +15,7 @@ import { getSpace, type Space } from "@/lib/actions/spaces";
 import { PageBreadcrumbs } from "@/components/page-breadcrumbs";
 import { PageEditor } from "@/components/editor/page-editor";
 import { PageViewer } from "@/components/editor/page-viewer";
+import { CommentsPanel } from "@/components/comments/comments-panel";
 
 export default function PageViewPage() {
   const params = useParams<{ spaceId: string; pageId: string }>();
@@ -69,12 +70,22 @@ export default function PageViewPage() {
 
   return (
     <div className="mx-auto max-w-4xl p-6">
-      <PageBreadcrumbs
-        orgName=""
-        spaceName={space.name}
-        spaceId={space.id}
-        breadcrumbs={breadcrumbs}
-      />
+      <div className="flex items-center justify-between">
+        <PageBreadcrumbs
+          orgName=""
+          spaceName={space.name}
+          spaceId={space.id}
+          breadcrumbs={breadcrumbs}
+        />
+
+        {authorInfo && (
+          <CommentsPanel
+            pageId={page.id}
+            currentUserId={authorInfo.currentUserId}
+            currentUserRole={authorInfo.currentUserRole}
+          />
+        )}
+      </div>
 
       {canEdit ? (
         <PageEditor

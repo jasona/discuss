@@ -610,6 +610,8 @@ export async function canUserEditPage(pageId: string): Promise<boolean> {
 export interface PageAuthorInfo {
   updatedByName: string | null;
   orgId: string;
+  currentUserId: string;
+  currentUserRole: string;
 }
 
 export async function getPageAuthorInfo(
@@ -638,6 +640,8 @@ export async function getPageAuthorInfo(
         userData?.user?.email ||
         null,
       orgId: ctx.orgId,
+      currentUserId: ctx.userId,
+      currentUserRole: ctx.role,
     };
   } catch {
     return null;

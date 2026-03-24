@@ -159,14 +159,14 @@ Update the file after completing each sub-task, not just after completing an ent
   - [x] 7.11 Create read-only viewer component: renders Tiptap content without the editor chrome (no toolbar, no cursor, no editing). Used for Viewer-role users and public share pages
   - [x] 7.12 Commit document editor
 
-- [ ] 8.0 Commenting system
-  - [ ] 8.1 Create server actions in `lib/actions/comments.ts`: `createComment(pageId, content, parentCommentId?)`, `updateComment(commentId, content)`, `deleteComment(commentId)`. Enforce permissions: any user with page access can comment, only author or Admin can edit/delete. Handle soft-delete logic (show "[deleted]" if comment has replies)
-  - [ ] 8.2 Create `components/comments/comment-thread.tsx` — displays all comments for a page as a threaded list. Top-level comments with their replies nested below (one level). Each comment shows: author avatar + name, timestamp, content (rendered with basic markdown), edit/delete actions (if permitted), and a "Reply" button
-  - [ ] 8.3 Create `components/comments/comment-form.tsx` — textarea input for writing comments. Support basic formatting (bold, italic, inline code, links) via Markdown or keyboard shortcuts. Include a "Submit" button. Reused for both new comments and replies
-  - [ ] 8.4 Implement @mention autocomplete in comment form: typing `@` triggers a dropdown/popover listing org members (fetched from `org_members`), filtered as the user types. Selecting a member inserts `@Username` into the comment text and stores the user ID for notification
-  - [ ] 8.5 Create comments panel/section on the page view: a toggleable sidebar panel or below-content section. Include a "Comments" button/tab in the page header showing comment count. Panel displays `comment-thread` and `comment-form`
-  - [ ] 8.6 Wire up notification creation: when a comment contains @mentions, after saving the comment, create notification records for each mentioned user (type: `mention`, with `page_id` and `reference_id` pointing to the comment). Also create `reply` notifications when replying to another user's comment
-  - [ ] 8.7 Commit commenting system
+- [x] 8.0 Commenting system
+  - [x] 8.1 Create server actions in `lib/actions/comments.ts`: `createComment(pageId, content, parentCommentId?)`, `updateComment(commentId, content)`, `deleteComment(commentId)`. Enforce permissions: any user with page access can comment, only author or Admin can edit/delete. Handle soft-delete logic (show "[deleted]" if comment has replies)
+  - [x] 8.2 Create `components/comments/comment-thread.tsx` — displays all comments for a page as a threaded list. Top-level comments with their replies nested below (one level). Each comment shows: author avatar + name, timestamp, content (rendered with basic markdown), edit/delete actions (if permitted), and a "Reply" button
+  - [x] 8.3 Create `components/comments/comment-form.tsx` — textarea input for writing comments. Support basic formatting (bold, italic, inline code, links) via Markdown or keyboard shortcuts. Include a "Submit" button. Reused for both new comments and replies
+  - [x] 8.4 Implement @mention autocomplete in comment form: typing `@` triggers a dropdown/popover listing org members (fetched from `org_members`), filtered as the user types. Selecting a member inserts `@Username` into the comment text and stores the user ID for notification
+  - [x] 8.5 Create comments panel/section on the page view: a toggleable sidebar panel or below-content section. Include a "Comments" button/tab in the page header showing comment count. Panel displays `comment-thread` and `comment-form`
+  - [x] 8.6 Wire up notification creation: when a comment contains @mentions, after saving the comment, create notification records for each mentioned user (type: `mention`, with `page_id` and `reference_id` pointing to the comment). Also create `reply` notifications when replying to another user's comment
+  - [x] 8.7 Commit commenting system
 
 - [ ] 9.0 Search
   - [ ] 9.1 Create server action `searchDocuments(query, spaceId?)` in `lib/actions/search.ts`: use Supabase's `textSearch` or raw SQL with `to_tsquery` on the `content_tsvector` column. Filter by `org_id` (from JWT), optionally by `space_id`. Return page ID, title, space name, `ts_headline` snippet with highlighted matches, and `updated_at`. Rank by `ts_rank`. Limit to 20 results
