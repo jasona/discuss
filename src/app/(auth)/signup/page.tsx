@@ -44,7 +44,7 @@ function SignupForm() {
       ? `${window.location.origin}/auth/callback?invite=${inviteToken}`
       : `${window.location.origin}/auth/callback`;
 
-    const { error } = await supabase.auth.signUp({
+    const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
@@ -59,6 +59,13 @@ function SignupForm() {
       return;
     }
 
+    // If the session exists immediately, email confirmation is disabled — go straight through
+    if (data.session) {
+      window.location.href = inviteToken ? `/auth/callback?invite=${inviteToken}` : "/auth/callback";
+      return;
+    }
+
+    // Otherwise email confirmation is required
     toast.success("Check your email to confirm your account.");
     router.push("/login");
   }

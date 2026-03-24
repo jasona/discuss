@@ -40,7 +40,7 @@ export default function LoginPage() {
       return;
     }
 
-    router.push("/auth/callback");
+    window.location.href = "/auth/callback";
   }
 
   async function handleOAuthLogin(provider: "google" | "github") {
