@@ -604,3 +604,42 @@ export async function canUserEditPage(pageId: string): Promise<boolean> {
     return false;
   }
 }
+
+// ─── Get Page Author Info ────────────────────────────────
+
+export interface PageAuthorInfo {
+  updatedByName: string | null;
+  orgId: string;
+}
+
+export async function getPageAuthorInfo(
+  pageId: string
+): Promise<PageAuthorInfo | null> {
+  try {
+    const ctx = await getOrgContext();
+    const admin = createAdminClient();
+
+    const { data: page } = await admin
+      .from("pages")
+      .select("updated_by")
+      .eq("id", pageId)
+      .eq("org_id", ctx.orgId)
+      .single();
+
+    if (!page) return null;
+
+    const { data: userData } = await admin.auth.admin.getUserById(
+      page.updated_by
+    );
+
+    return {
+      updatedByName:
+        userData?.user?.user_metadata?.full_name ||
+        userData?.user?.email ||
+        null,
+      orgId: ctx.orgId,
+    };
+  } catch {
+    return null;
+  }
+}

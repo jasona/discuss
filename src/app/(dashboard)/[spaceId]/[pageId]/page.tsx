@@ -6,8 +6,10 @@ import {
   getPage,
   getPageBreadcrumbs,
   canUserEditPage,
+  getPageAuthorInfo,
   type Page,
   type PageBreadcrumb,
+  type PageAuthorInfo,
 } from "@/lib/actions/pages";
 import { getSpace, type Space } from "@/lib/actions/spaces";
 import { PageBreadcrumbs } from "@/components/page-breadcrumbs";
@@ -20,19 +22,22 @@ export default function PageViewPage() {
   const [space, setSpace] = useState<Space | null>(null);
   const [breadcrumbs, setBreadcrumbs] = useState<PageBreadcrumb[]>([]);
   const [canEdit, setCanEdit] = useState(false);
+  const [authorInfo, setAuthorInfo] = useState<PageAuthorInfo | null>(null);
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
-    const [p, s, bc, editable] = await Promise.all([
+    const [p, s, bc, editable, author] = await Promise.all([
       getPage(params.pageId),
       getSpace(params.spaceId),
       getPageBreadcrumbs(params.pageId),
       canUserEditPage(params.pageId),
+      getPageAuthorInfo(params.pageId),
     ]);
     setPage(p);
     setSpace(s);
     setBreadcrumbs(bc);
     setCanEdit(editable);
+    setAuthorInfo(author);
     setLoading(false);
   }, [params.pageId, params.spaceId]);
 
@@ -72,7 +77,11 @@ export default function PageViewPage() {
       />
 
       {canEdit ? (
-        <PageEditor page={page} />
+        <PageEditor
+          page={page}
+          orgId={authorInfo?.orgId}
+          updatedByName={authorInfo?.updatedByName}
+        />
       ) : (
         <PageViewer page={page} />
       )}

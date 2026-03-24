@@ -145,19 +145,19 @@ Update the file after completing each sub-task, not just after completing an ent
   - [x] 6.11 Create archived items view: accessible from settings, shows all archived spaces/pages with restore and permanent delete options. Auto-purge note: items archived > 30 days should display a warning
   - [x] 6.12 Commit spaces and page hierarchy
 
-- [ ] 7.0 Document editor
-  - [ ] 7.1 Create `components/editor/tiptap-editor.tsx` — initialize Tiptap editor with extensions: StarterKit (headings H1–H4, bold, italic, strike, code, blockquote, lists, horizontal rule), Image, Table + TableRow + TableHeader + TableCell, TaskList + TaskItem, Link, CodeBlockLowlight (with common language support), Placeholder, Mention (for future comment @mentions)
-  - [ ] 7.2 Create `components/editor/editor-toolbar.tsx` — ShadCN-based toolbar with: text style dropdown (paragraph, H1–H4), bold/italic/strike toggles, link button, code/code-block, list buttons (bullet, ordered, task), blockquote, table insert, image upload, horizontal rule. Less-used items in a "more" dropdown menu. Toolbar is sticky at the top of the editor area
-  - [ ] 7.3 Create `components/editor/source-mode.tsx` — raw Markdown textarea editor with monospace font. Create `lib/editor/markdown.ts` with `tiptapJsonToMarkdown()` and `markdownToTiptapJson()` conversion functions using Tiptap's built-in Markdown serialization or a library like `turndown`/`marked`
-  - [ ] 7.4 Implement source mode toggle: a button in the toolbar that switches between the Tiptap WYSIWYG editor and the Markdown source textarea. On toggle, convert content between formats. Preserve cursor position approximately
-  - [ ] 7.5 Create `components/editor/image-upload.ts` — handle image uploads to Supabase Storage: support file picker, drag-and-drop onto editor, and clipboard paste. Upload to `documents/{org_id}/{random_id}.{ext}`, return public URL, insert as Tiptap Image node
-  - [ ] 7.6 Implement auto-save: create a debounced save function (5 seconds after last keystroke). Call `updatePage` server action with the current Tiptap JSON content and generated Markdown string. Show save status indicator in the toolbar area ("Saved" / "Saving..." / "Unsaved changes") using a small text label or icon
-  - [ ] 7.7 Create page title input: an inline editable title field above the editor (large font, no border, placeholder "Untitled"). Title changes are included in auto-save
-  - [ ] 7.8 Create "last edited by" display: show `updated_by` user name/avatar and `updated_at` timestamp below the title. Fetch user profile for display
-  - [ ] 7.9 Implement Markdown export: toolbar action or page menu item that downloads the current `content_markdown` as `{page-title}.md`
-  - [ ] 7.10 Implement Markdown import: toolbar action or page menu item that accepts a `.md` file upload, parses it with `markdownToTiptapJson()`, and either creates a new page or replaces current page content (with confirmation)
-  - [ ] 7.11 Create read-only viewer component: renders Tiptap content without the editor chrome (no toolbar, no cursor, no editing). Used for Viewer-role users and public share pages
-  - [ ] 7.12 Commit document editor
+- [x] 7.0 Document editor
+  - [x] 7.1 Create `components/editor/tiptap-editor.tsx` — initialize Tiptap editor with extensions: StarterKit (headings H1–H4, bold, italic, strike, code, blockquote, lists, horizontal rule), Image, Table + TableRow + TableHeader + TableCell, TaskList + TaskItem, Link, CodeBlockLowlight (with common language support), Placeholder, Mention (for future comment @mentions)
+  - [x] 7.2 Create `components/editor/editor-toolbar.tsx` — ShadCN-based toolbar with: text style dropdown (paragraph, H1–H4), bold/italic/strike toggles, link button, code/code-block, list buttons (bullet, ordered, task), blockquote, table insert, image upload, horizontal rule. Less-used items in a "more" dropdown menu. Toolbar is sticky at the top of the editor area
+  - [x] 7.3 Create `components/editor/source-mode.tsx` — raw Markdown textarea editor with monospace font. Create `lib/editor/markdown.ts` with `tiptapJsonToMarkdown()` and `markdownToTiptapJson()` conversion functions using Tiptap's built-in Markdown serialization or a library like `turndown`/`marked`
+  - [x] 7.4 Implement source mode toggle: a button in the toolbar that switches between the Tiptap WYSIWYG editor and the Markdown source textarea. On toggle, convert content between formats. Preserve cursor position approximately
+  - [x] 7.5 Create `components/editor/image-upload.ts` — handle image uploads to Supabase Storage: support file picker, drag-and-drop onto editor, and clipboard paste. Upload to `documents/{org_id}/{random_id}.{ext}`, return public URL, insert as Tiptap Image node
+  - [x] 7.6 Implement auto-save: create a debounced save function (5 seconds after last keystroke). Call `updatePage` server action with the current Tiptap JSON content and generated Markdown string. Show save status indicator in the toolbar area ("Saved" / "Saving..." / "Unsaved changes") using a small text label or icon
+  - [x] 7.7 Create page title input: an inline editable title field above the editor (large font, no border, placeholder "Untitled"). Title changes are included in auto-save
+  - [x] 7.8 Create "last edited by" display: show `updated_by` user name/avatar and `updated_at` timestamp below the title. Fetch user profile for display
+  - [x] 7.9 Implement Markdown export: toolbar action or page menu item that downloads the current `content_markdown` as `{page-title}.md`
+  - [x] 7.10 Implement Markdown import: toolbar action or page menu item that accepts a `.md` file upload, parses it with `markdownToTiptapJson()`, and either creates a new page or replaces current page content (with confirmation)
+  - [x] 7.11 Create read-only viewer component: renders Tiptap content without the editor chrome (no toolbar, no cursor, no editing). Used for Viewer-role users and public share pages
+  - [x] 7.12 Commit document editor
 
 - [ ] 8.0 Commenting system
   - [ ] 8.1 Create server actions in `lib/actions/comments.ts`: `createComment(pageId, content, parentCommentId?)`, `updateComment(commentId, content)`, `deleteComment(commentId)`. Enforce permissions: any user with page access can comment, only author or Admin can edit/delete. Handle soft-delete logic (show "[deleted]" if comment has replies)
