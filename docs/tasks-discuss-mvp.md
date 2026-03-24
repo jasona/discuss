@@ -68,68 +68,68 @@ Update the file after completing each sub-task, not just after completing an ent
 - [x] 0.0 Create feature branch
   - [x] 0.1 Initialize a Git repository (`git init`) and create the initial branch (e.g., `git checkout -b feature/discuss-mvp`)
 
-- [ ] 1.0 Project scaffolding & configuration
-  - [ ] 1.1 Create a new Next.js project with App Router, TypeScript, Tailwind CSS, and ESLint (`npx create-next-app@latest`)
-  - [ ] 1.2 Initialize ShadCN UI (`npx shadcn@latest init`) and install foundational components: Button, Input, Label, Dialog, DropdownMenu, Popover, Command, Card, Avatar, Badge, Breadcrumb, Separator, Toast/Sonner, Toggle, Sidebar, Sheet
-  - [ ] 1.3 Install Supabase client packages (`@supabase/supabase-js`, `@supabase/ssr`)
-  - [ ] 1.4 Install Stripe SDK (`stripe` for server, `@stripe/stripe-js` for client)
-  - [ ] 1.5 Install Tiptap core and extensions (`@tiptap/react`, `@tiptap/starter-kit`, `@tiptap/extension-image`, `@tiptap/extension-table`, `@tiptap/extension-task-list`, `@tiptap/extension-task-item`, `@tiptap/extension-link`, `@tiptap/extension-code-block-lowlight`, `@tiptap/extension-placeholder`, `@tiptap/extension-mention`, `@tiptap/extension-horizontal-rule`)
-  - [ ] 1.6 Create `.env.example` with all required environment variables: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `STRIPE_SECRET_KEY`, `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`, `STRIPE_WEBHOOK_SECRET`, `NEXT_PUBLIC_APP_DOMAIN` (discusslabs.com), `NEXT_PUBLIC_APP_URL`
-  - [ ] 1.7 Create Supabase client utilities: `lib/supabase/client.ts` (browser client), `lib/supabase/server.ts` (server client with cookies), `lib/supabase/admin.ts` (service-role client)
-  - [ ] 1.8 Create Stripe client utility: `lib/stripe/client.ts`
-  - [ ] 1.9 Create `lib/constants.ts` with plan limits (Free: 5 users/3 spaces/100MB, Starter: 50 users/unlimited/5GB, Pro: unlimited/unlimited/50GB), role enums, and app-wide constants
-  - [ ] 1.10 Configure `next.config.ts` for standalone output (required for Docker/Coolify deployment)
-  - [ ] 1.11 Create `Dockerfile` for production build: multi-stage build using Node.js, copy standalone output, expose port 3000, run `next start`
-  - [ ] 1.12 Create `.dockerignore` to exclude `node_modules`, `.next`, `.git`, `.env.local`
-  - [ ] 1.13 Create `ThemeProvider` component wrapping `next-themes` for dark/light mode support
-  - [ ] 1.14 Create root layout (`app/layout.tsx`) with ThemeProvider, Toaster (Sonner), and base HTML structure with font setup
-  - [ ] 1.15 Commit initial scaffolding
+- [x] 1.0 Project scaffolding & configuration
+  - [x] 1.1 Create a new Next.js project with App Router, TypeScript, Tailwind CSS, and ESLint (`npx create-next-app@latest`)
+  - [x] 1.2 Initialize ShadCN UI (`npx shadcn@latest init`) and install foundational components: Button, Input, Label, Dialog, DropdownMenu, Popover, Command, Card, Avatar, Badge, Breadcrumb, Separator, Toast/Sonner, Toggle, Sidebar, Sheet
+  - [x] 1.3 Install Supabase client packages (`@supabase/supabase-js`, `@supabase/ssr`)
+  - [x] 1.4 Install Stripe SDK (`stripe` for server, `@stripe/stripe-js` for client)
+  - [x] 1.5 Install Tiptap core and extensions (`@tiptap/react`, `@tiptap/starter-kit`, `@tiptap/extension-image`, `@tiptap/extension-table`, `@tiptap/extension-task-list`, `@tiptap/extension-task-item`, `@tiptap/extension-link`, `@tiptap/extension-code-block-lowlight`, `@tiptap/extension-placeholder`, `@tiptap/extension-mention`, `@tiptap/extension-horizontal-rule`)
+  - [x] 1.6 Create `.env.example` with all required environment variables: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `STRIPE_SECRET_KEY`, `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`, `STRIPE_WEBHOOK_SECRET`, `NEXT_PUBLIC_APP_DOMAIN` (discusslabs.com), `NEXT_PUBLIC_APP_URL`
+  - [x] 1.7 Create Supabase client utilities: `lib/supabase/client.ts` (browser client), `lib/supabase/server.ts` (server client with cookies), `lib/supabase/admin.ts` (service-role client)
+  - [x] 1.8 Create Stripe client utility: `lib/stripe/client.ts`
+  - [x] 1.9 Create `lib/constants.ts` with plan limits (Free: 5 users/3 spaces/100MB, Starter: 50 users/unlimited/5GB, Pro: unlimited/unlimited/50GB), role enums, and app-wide constants
+  - [x] 1.10 Configure `next.config.ts` for standalone output (required for Docker/Coolify deployment)
+  - [x] 1.11 Create `Dockerfile` for production build: multi-stage build using Node.js, copy standalone output, expose port 3000, run `next start`
+  - [x] 1.12 Create `.dockerignore` to exclude `node_modules`, `.next`, `.git`, `.env.local`
+  - [x] 1.13 Create `ThemeProvider` component wrapping `next-themes` for dark/light mode support
+  - [x] 1.14 Create root layout (`app/layout.tsx`) with ThemeProvider, Toaster (Sonner), and base HTML structure with font setup
+  - [x] 1.15 Commit initial scaffolding
 
-- [ ] 2.0 Database schema, RLS policies & Supabase Auth setup
-  - [ ] 2.1 Create migration `001_initial_schema.sql`: define enums (`org_role`, `space_role`, `space_default_role`, `plan_type`, `subscription_status`, `notification_type`), and all tables (`organizations`, `org_members`, `spaces`, `space_members`, `pages`, `comments`, `notifications`, `subscriptions`, `invitations`) with columns, constraints, and indexes as defined in PRD Section 7.4
-  - [ ] 2.2 Add indexes for RLS performance: index on `org_id` for all tenant tables, index on `space_id` for `space_members` and `pages`, index on `page_id` for `comments`, GIN index on `content_tsvector` for full-text search, unique index on `organizations.slug`, unique index on `pages.external_share_slug`
-  - [ ] 2.3 Create migration `002_rls_policies.sql`: enable RLS on all tables and create policies — `organizations` (members can SELECT their orgs), `org_members` (members can see co-members, owners/admins can INSERT/UPDATE/DELETE), `spaces` (accessible based on `space_members` or `default_role`), `space_members` (admins can manage), `pages` (access derived from space access, public pages allow anonymous SELECT), `comments` (access follows page access), `notifications` (users see only their own), `subscriptions` (org owners/admins can view), `invitations` (admins can manage, token-based SELECT for acceptance)
-  - [ ] 2.4 Create migration `003_auth_hooks.sql`: create a Postgres function to set custom JWT claims (`org_id`, `org_role`) during token generation using Supabase Auth hooks. The function should look up the user's active org from `org_members` and inject claims into the JWT
-  - [ ] 2.5 Create migration `004_tsvector_trigger.sql`: create a trigger on the `pages` table that automatically updates `content_tsvector` whenever `title` or `content_markdown` is inserted or updated
-  - [ ] 2.6 Configure Supabase Auth providers: enable Email/Password, Google OAuth, and GitHub OAuth in the Supabase dashboard (document the required OAuth app credentials in `.env.example`)
-  - [ ] 2.7 Create Supabase Storage bucket `documents` with storage policies: authenticated users can upload to `{org_id}/` path, read access scoped to org members, public read for externally shared image URLs
-  - [ ] 2.8 Generate TypeScript types from Supabase schema (`npx supabase gen types typescript`) and save to `lib/supabase/types.ts`
-  - [ ] 2.9 Run migrations against local Supabase instance and verify all tables, RLS policies, and triggers work correctly
-  - [ ] 2.10 Commit database schema and migrations
+- [x] 2.0 Database schema, RLS policies & Supabase Auth setup
+  - [x] 2.1 Create migration `001_initial_schema.sql`: define enums (`org_role`, `space_role`, `space_default_role`, `plan_type`, `subscription_status`, `notification_type`), and all tables (`organizations`, `org_members`, `spaces`, `space_members`, `pages`, `comments`, `notifications`, `subscriptions`, `invitations`) with columns, constraints, and indexes as defined in PRD Section 7.4
+  - [x] 2.2 Add indexes for RLS performance: index on `org_id` for all tenant tables, index on `space_id` for `space_members` and `pages`, index on `page_id` for `comments`, GIN index on `content_tsvector` for full-text search, unique index on `organizations.slug`, unique index on `pages.external_share_slug`
+  - [x] 2.3 Create migration `002_rls_policies.sql`: enable RLS on all tables and create policies — `organizations` (members can SELECT their orgs), `org_members` (members can see co-members, owners/admins can INSERT/UPDATE/DELETE), `spaces` (accessible based on `space_members` or `default_role`), `space_members` (admins can manage), `pages` (access derived from space access, public pages allow anonymous SELECT), `comments` (access follows page access), `notifications` (users see only their own), `subscriptions` (org owners/admins can view), `invitations` (admins can manage, token-based SELECT for acceptance)
+  - [x] 2.4 Create migration `003_auth_hooks.sql`: create a Postgres function to set custom JWT claims (`org_id`, `org_role`) during token generation using Supabase Auth hooks. The function should look up the user's active org from `org_members` and inject claims into the JWT
+  - [x] 2.5 Create migration `004_tsvector_trigger.sql`: create a trigger on the `pages` table that automatically updates `content_tsvector` whenever `title` or `content_markdown` is inserted or updated
+  - [x] 2.6 Configure Supabase Auth providers: enable Email/Password, Google OAuth, and GitHub OAuth in the Supabase dashboard (document the required OAuth app credentials in `.env.example`)
+  - [x] 2.7 Create Supabase Storage bucket `documents` with storage policies: authenticated users can upload to `{org_id}/` path, read access scoped to org members, public read for externally shared image URLs
+  - [x] 2.8 Generate TypeScript types from Supabase schema (`npx supabase gen types typescript`) and save to `lib/supabase/types.ts`
+  - [x] 2.9 Run migrations against local Supabase instance and verify all tables, RLS policies, and triggers work correctly
+  - [x] 2.10 Commit database schema and migrations
 
-- [ ] 3.0 Multi-tenant middleware & subdomain routing
-  - [ ] 3.1 Create `middleware.ts` at the project root: extract the `Host` header, parse the subdomain by removing the base domain (`discusslabs.com`), and store the resolved subdomain in a request header or cookie for downstream use
-  - [ ] 3.2 Handle routing cases in middleware: (a) root domain (`discusslabs.com`) — allow through to auth/marketing routes, (b) valid org subdomain (`acme.discusslabs.com`) — set tenant context and continue, (c) reserved subdomains (`www`, `api`, `app`, `admin`) — redirect to root domain, (d) `localhost` — support local dev with query param or cookie-based tenant override
-  - [ ] 3.3 Create `lib/tenant.ts` utility: `getTenantFromHeaders()` function that reads the tenant context set by middleware, to be used in server components and server actions
-  - [ ] 3.4 Configure middleware matcher in `middleware.ts` to exclude static files, `_next`, and API health check (`/api/health`) from middleware processing
-  - [ ] 3.5 Create `app/api/health/route.ts` returning `{ status: "ok" }` for Coolify Docker health checks
-  - [ ] 3.6 Write unit tests for subdomain parsing logic: test root domain, valid subdomains, reserved subdomains, localhost, and subdomains with invalid characters
-  - [ ] 3.7 Commit middleware and routing
+- [x] 3.0 Multi-tenant middleware & subdomain routing
+  - [x] 3.1 Create `middleware.ts` at the project root: extract the `Host` header, parse the subdomain by removing the base domain (`discusslabs.com`), and store the resolved subdomain in a request header or cookie for downstream use
+  - [x] 3.2 Handle routing cases in middleware: (a) root domain (`discusslabs.com`) — allow through to auth/marketing routes, (b) valid org subdomain (`acme.discusslabs.com`) — set tenant context and continue, (c) reserved subdomains (`www`, `api`, `app`, `admin`) — redirect to root domain, (d) `localhost` — support local dev with query param or cookie-based tenant override
+  - [x] 3.3 Create `lib/tenant.ts` utility: `getTenantFromHeaders()` function that reads the tenant context set by middleware, to be used in server components and server actions
+  - [x] 3.4 Configure middleware matcher in `middleware.ts` to exclude static files, `_next`, and API health check (`/api/health`) from middleware processing
+  - [x] 3.5 Create `app/api/health/route.ts` returning `{ status: "ok" }` for Coolify Docker health checks
+  - [x] 3.6 Write unit tests for subdomain parsing logic: test root domain, valid subdomains, reserved subdomains, localhost, and subdomains with invalid characters
+  - [x] 3.7 Commit middleware and routing
 
-- [ ] 4.0 Authentication & onboarding flow
-  - [ ] 4.1 Create `app/(auth)/layout.tsx` — a centered, minimal layout for auth pages (no sidebar, no org context)
-  - [ ] 4.2 Create `app/(auth)/login/page.tsx` — login form with email/password fields and Google/GitHub OAuth buttons. Use Supabase Auth `signInWithPassword` and `signInWithOAuth`. On success, look up user's orgs and redirect to their default org subdomain
-  - [ ] 4.3 Create `app/(auth)/signup/page.tsx` — signup form with name, email, password fields and Google/GitHub OAuth buttons. Use Supabase Auth `signUp`. On success, redirect to onboarding
-  - [ ] 4.4 Create `app/(dashboard)/onboarding/page.tsx` — step 1: create org (name + slug input with real-time slug availability check via server action). Validate slug (3–40 chars, lowercase alphanumeric + hyphens, unique). On submit, insert into `organizations` and `org_members` (as Owner), update JWT claims, redirect to the new org's subdomain
-  - [ ] 4.5 Add onboarding step 2 (on org subdomain): optional "invite teammates" form (email inputs) — can be skipped. Sends invitations (see Task 5.0)
-  - [ ] 4.6 Add onboarding step 3: prompt to create first space and page, or skip to dashboard
-  - [ ] 4.7 Create `app/(auth)/invite/[token]/page.tsx` — invitation acceptance page: validate token, show org name and role being offered. If user is logged in, accept and join org. If not, redirect to signup with invitation token preserved, then auto-accept after signup
-  - [ ] 4.8 Create `lib/auth.ts` utility: `getSession()` helper for server components, `requireAuth()` that redirects to login if no session, `requireOrg()` that validates user belongs to the current tenant org
-  - [ ] 4.9 Implement org switching: create `components/sidebar/org-switcher.tsx` — dropdown listing all orgs the user belongs to (query `org_members`), clicking an org redirects to `{slug}.discusslabs.com`
-  - [ ] 4.10 Add sign-out functionality: clear Supabase session and redirect to root domain login page
-  - [ ] 4.11 Commit auth and onboarding flow
+- [x] 4.0 Authentication & onboarding flow
+  - [x] 4.1 Create `app/(auth)/layout.tsx` — a centered, minimal layout for auth pages (no sidebar, no org context)
+  - [x] 4.2 Create `app/(auth)/login/page.tsx` — login form with email/password fields and Google/GitHub OAuth buttons. Use Supabase Auth `signInWithPassword` and `signInWithOAuth`. On success, look up user's orgs and redirect to their default org subdomain
+  - [x] 4.3 Create `app/(auth)/signup/page.tsx` — signup form with name, email, password fields and Google/GitHub OAuth buttons. Use Supabase Auth `signUp`. On success, redirect to onboarding
+  - [x] 4.4 Create `app/(dashboard)/onboarding/page.tsx` — step 1: create org (name + slug input with real-time slug availability check via server action). Validate slug (3–40 chars, lowercase alphanumeric + hyphens, unique). On submit, insert into `organizations` and `org_members` (as Owner), update JWT claims, redirect to the new org's subdomain
+  - [x] 4.5 Add onboarding step 2 (on org subdomain): optional "invite teammates" form (email inputs) — can be skipped. Sends invitations (see Task 5.0)
+  - [x] 4.6 Add onboarding step 3: prompt to create first space and page, or skip to dashboard
+  - [x] 4.7 Create `app/(auth)/invite/[token]/page.tsx` — invitation acceptance page: validate token, show org name and role being offered. If user is logged in, accept and join org. If not, redirect to signup with invitation token preserved, then auto-accept after signup
+  - [x] 4.8 Create `lib/auth.ts` utility: `getSession()` helper for server components, `requireAuth()` that redirects to login if no session, `requireOrg()` that validates user belongs to the current tenant org
+  - [x] 4.9 Implement org switching: create `components/sidebar/org-switcher.tsx` — dropdown listing all orgs the user belongs to (query `org_members`), clicking an org redirects to `{slug}.discusslabs.com`
+  - [x] 4.10 Add sign-out functionality: clear Supabase session and redirect to root domain login page
+  - [x] 4.11 Commit auth and onboarding flow
 
-- [ ] 5.0 Organization & member management
-  - [ ] 5.1 Create server actions in `app/(dashboard)/settings/members/actions.ts`: `inviteMember(email, role)` — validate plan limits (max users), create invitation record with unique token and 7-day expiry, send invitation email via Supabase Auth or a transactional email service
-  - [ ] 5.2 Create `app/(dashboard)/settings/members/page.tsx` — members list table showing: avatar, name, email, org-level default role, join date. Owners/Admins see action buttons (change role, remove member)
-  - [ ] 5.3 Add "Invite member" dialog on the members page: email input + role selector dropdown (Admin, Editor, Viewer). Submit calls `inviteMember` server action
-  - [ ] 5.4 Create server action `updateMemberRole(userId, newRole)` — only Owners/Admins can execute. Prevent changing the Owner's role (must use transfer). Update `org_members.default_role`
-  - [ ] 5.5 Create server action `removeMember(userId)` — only Owners can remove Admins, Owners/Admins can remove Editors/Viewers. Delete from `org_members` and all `space_members` entries for that user in the org
-  - [ ] 5.6 Create server action `transferOwnership(newOwnerId)` — only current Owner can execute. Must target an Admin. Swap roles: current Owner becomes Admin, target becomes Owner. Update `organizations.owner_id`
-  - [ ] 5.7 Create `app/(dashboard)/settings/general/page.tsx` — org settings: edit org name, view subdomain (read-only for MVP), set default space permission for new spaces
-  - [ ] 5.8 Create pending invitations section on members page: list pending invites with email, role, expiry date, and option to revoke
-  - [ ] 5.9 Create `lib/permissions.ts` with helper functions: `canManageMembers(role)`, `canEditSpace(userRole, spaceRole)`, `canEditPage(userRole, spaceRole)`, `canManageBilling(role)`, `isAtLeast(role, minimumRole)`. Write unit tests in `lib/permissions.test.ts`
-  - [ ] 5.10 Commit org and member management
+- [x] 5.0 Organization & member management
+  - [x] 5.1 Create server actions in `app/(dashboard)/settings/members/actions.ts`: `inviteMember(email, role)` — validate plan limits (max users), create invitation record with unique token and 7-day expiry, send invitation email via Supabase Auth or a transactional email service
+  - [x] 5.2 Create `app/(dashboard)/settings/members/page.tsx` — members list table showing: avatar, name, email, org-level default role, join date. Owners/Admins see action buttons (change role, remove member)
+  - [x] 5.3 Add "Invite member" dialog on the members page: email input + role selector dropdown (Admin, Editor, Viewer). Submit calls `inviteMember` server action
+  - [x] 5.4 Create server action `updateMemberRole(userId, newRole)` — only Owners/Admins can execute. Prevent changing the Owner's role (must use transfer). Update `org_members.default_role`
+  - [x] 5.5 Create server action `removeMember(userId)` — only Owners can remove Admins, Owners/Admins can remove Editors/Viewers. Delete from `org_members` and all `space_members` entries for that user in the org
+  - [x] 5.6 Create server action `transferOwnership(newOwnerId)` — only current Owner can execute. Must target an Admin. Swap roles: current Owner becomes Admin, target becomes Owner. Update `organizations.owner_id`
+  - [x] 5.7 Create `app/(dashboard)/settings/general/page.tsx` — org settings: edit org name, view subdomain (read-only for MVP), set default space permission for new spaces
+  - [x] 5.8 Create pending invitations section on members page: list pending invites with email, role, expiry date, and option to revoke
+  - [x] 5.9 Create `lib/permissions.ts` with helper functions: `canManageMembers(role)`, `canEditSpace(userRole, spaceRole)`, `canEditPage(userRole, spaceRole)`, `canManageBilling(role)`, `isAtLeast(role, minimumRole)`. Write unit tests in `lib/permissions.test.ts`
+  - [x] 5.10 Commit org and member management
 
 - [ ] 6.0 Spaces & page hierarchy
   - [ ] 6.1 Create server actions for spaces in `lib/actions/spaces.ts`: `createSpace(name, description, icon, defaultRole)`, `updateSpace(spaceId, updates)`, `archiveSpace(spaceId)`, `restoreSpace(spaceId)`, `deleteSpace(spaceId)` (permanent, only if archived). Enforce plan limits (Free: max 3 spaces)
