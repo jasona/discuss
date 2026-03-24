@@ -168,13 +168,13 @@ Update the file after completing each sub-task, not just after completing an ent
   - [x] 8.6 Wire up notification creation: when a comment contains @mentions, after saving the comment, create notification records for each mentioned user (type: `mention`, with `page_id` and `reference_id` pointing to the comment). Also create `reply` notifications when replying to another user's comment
   - [x] 8.7 Commit commenting system
 
-- [ ] 9.0 Search
-  - [ ] 9.1 Create server action `searchDocuments(query, spaceId?)` in `lib/actions/search.ts`: use Supabase's `textSearch` or raw SQL with `to_tsquery` on the `content_tsvector` column. Filter by `org_id` (from JWT), optionally by `space_id`. Return page ID, title, space name, `ts_headline` snippet with highlighted matches, and `updated_at`. Rank by `ts_rank`. Limit to 20 results
-  - [ ] 9.2 Create `components/search/command-palette.tsx` using ShadCN Command component: bind to Cmd+K / Ctrl+K keyboard shortcut globally. Input field at top, results below. Debounce search input (300ms). Display results grouped by space
-  - [ ] 9.3 Add quick navigation mode to command palette: when the query matches space or page names (simple ILIKE query), show those as navigation results above full-text search results. Clicking navigates to that space/page
-  - [ ] 9.4 Add space filter to command palette: optional dropdown or chip to scope search to a specific space
-  - [ ] 9.5 Ensure search respects permissions: the RLS policies on `pages` should automatically filter results to only pages the user can access. Verify with a test: a user without space access should not see results from that space
-  - [ ] 9.6 Commit search
+- [x] 9.0 Search
+  - [x] 9.1 Create server action `searchDocuments(query, spaceId?)` in `lib/actions/search.ts`: use Supabase's `textSearch` or raw SQL with `to_tsquery` on the `content_tsvector` column. Filter by `org_id` (from JWT), optionally by `space_id`. Return page ID, title, space name, `ts_headline` snippet with highlighted matches, and `updated_at`. Rank by `ts_rank`. Limit to 20 results
+  - [x] 9.2 Create `components/search/command-palette.tsx` using ShadCN Command component: bind to Cmd+K / Ctrl+K keyboard shortcut globally. Input field at top, results below. Debounce search input (300ms). Display results grouped by space
+  - [x] 9.3 Add quick navigation mode to command palette: when the query matches space or page names (simple ILIKE query), show those as navigation results above full-text search results. Clicking navigates to that space/page
+  - [x] 9.4 Add space filter to command palette: optional dropdown or chip to scope search to a specific space
+  - [x] 9.5 Ensure search respects permissions: the RLS policies on `pages` should automatically filter results to only pages the user can access. Verify with a test: a user without space access should not see results from that space
+  - [x] 9.6 Commit search
 
 - [ ] 10.0 Sharing
   - [ ] 10.1 Internal sharing is handled by space-level permissions (Task 6.0). Verify that page access correctly inherits from `space_members` role or `spaces.default_role`. No additional UI needed — users access pages they have space access to
