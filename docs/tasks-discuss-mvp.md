@@ -131,19 +131,19 @@ Update the file after completing each sub-task, not just after completing an ent
   - [x] 5.9 Create `lib/permissions.ts` with helper functions: `canManageMembers(role)`, `canEditSpace(userRole, spaceRole)`, `canEditPage(userRole, spaceRole)`, `canManageBilling(role)`, `isAtLeast(role, minimumRole)`. Write unit tests in `lib/permissions.test.ts`
   - [x] 5.10 Commit org and member management
 
-- [ ] 6.0 Spaces & page hierarchy
-  - [ ] 6.1 Create server actions for spaces in `lib/actions/spaces.ts`: `createSpace(name, description, icon, defaultRole)`, `updateSpace(spaceId, updates)`, `archiveSpace(spaceId)`, `restoreSpace(spaceId)`, `deleteSpace(spaceId)` (permanent, only if archived). Enforce plan limits (Free: max 3 spaces)
-  - [ ] 6.2 Create server actions for pages in `lib/actions/pages.ts`: `createPage(spaceId, parentPageId, title)`, `updatePage(pageId, updates)`, `archivePage(pageId)` (recursively archives sub-pages), `restorePage(pageId)`, `deletePage(pageId)` (permanent), `movePage(pageId, newSpaceId, newParentPageId)`, `reorderPages(spaceId, parentPageId, orderedPageIds)`
-  - [ ] 6.3 Create `components/sidebar/space-tree.tsx` — collapsible tree component: top level shows spaces (with icons), expanding a space shows its nested page tree. Only show spaces the user has access to (query via RLS). Each item shows title and has a right-click context menu (rename, archive, delete, move)
-  - [ ] 6.4 Implement drag-and-drop reordering in the sidebar tree using a library like `@dnd-kit/core` or `dnd-kit/sortable`. Support reordering pages within a space and moving pages between spaces. On drop, call `reorderPages` or `movePage` server action
-  - [ ] 6.5 Create "New Space" dialog accessible from sidebar: name, optional description, icon picker (emoji), default permission selector. Calls `createSpace` on submit
-  - [ ] 6.6 Create "New Page" action: button in sidebar under each space, or a "+" icon next to a parent page. Creates a new page with a default "Untitled" title and opens the editor
-  - [ ] 6.7 Create `app/(dashboard)/[spaceId]/page.tsx` — space landing page showing: space name, description, flat list of top-level pages in that space, and quick "New Page" button
-  - [ ] 6.8 Create `app/(dashboard)/[spaceId]/[pageId]/page.tsx` — page view/edit route. Fetch the page data, check permissions (viewer sees read-only, editor sees editor). Pass data to the editor or viewer component
-  - [ ] 6.9 Create breadcrumb component at the top of the page view: Org > Space > Parent Page > Current Page. Use ShadCN Breadcrumb. Build breadcrumb trail by walking `parent_page_id` chain
-  - [ ] 6.10 Create space settings panel (accessible to Admins): configure space name, description, icon, default role for new org members, manage space-level member overrides (`space_members` table)
-  - [ ] 6.11 Create archived items view: accessible from settings, shows all archived spaces/pages with restore and permanent delete options. Auto-purge note: items archived > 30 days should display a warning
-  - [ ] 6.12 Commit spaces and page hierarchy
+- [x] 6.0 Spaces & page hierarchy
+  - [x] 6.1 Create server actions for spaces in `lib/actions/spaces.ts`: `createSpace(name, description, icon, defaultRole)`, `updateSpace(spaceId, updates)`, `archiveSpace(spaceId)`, `restoreSpace(spaceId)`, `deleteSpace(spaceId)` (permanent, only if archived). Enforce plan limits (Free: max 3 spaces)
+  - [x] 6.2 Create server actions for pages in `lib/actions/pages.ts`: `createPage(spaceId, parentPageId, title)`, `updatePage(pageId, updates)`, `archivePage(pageId)` (recursively archives sub-pages), `restorePage(pageId)`, `deletePage(pageId)` (permanent), `movePage(pageId, newSpaceId, newParentPageId)`, `reorderPages(spaceId, parentPageId, orderedPageIds)`
+  - [x] 6.3 Create `components/sidebar/space-tree.tsx` — collapsible tree component: top level shows spaces (with icons), expanding a space shows its nested page tree. Only show spaces the user has access to (query via RLS). Each item shows title and has a right-click context menu (rename, archive, delete, move)
+  - [x] 6.4 Implement drag-and-drop reordering in the sidebar tree using a library like `@dnd-kit/core` or `dnd-kit/sortable`. Support reordering pages within a space and moving pages between spaces. On drop, call `reorderPages` or `movePage` server action
+  - [x] 6.5 Create "New Space" dialog accessible from sidebar: name, optional description, icon picker (emoji), default permission selector. Calls `createSpace` on submit
+  - [x] 6.6 Create "New Page" action: button in sidebar under each space, or a "+" icon next to a parent page. Creates a new page with a default "Untitled" title and opens the editor
+  - [x] 6.7 Create `app/(dashboard)/[spaceId]/page.tsx` — space landing page showing: space name, description, flat list of top-level pages in that space, and quick "New Page" button
+  - [x] 6.8 Create `app/(dashboard)/[spaceId]/[pageId]/page.tsx` — page view/edit route. Fetch the page data, check permissions (viewer sees read-only, editor sees editor). Pass data to the editor or viewer component
+  - [x] 6.9 Create breadcrumb component at the top of the page view: Org > Space > Parent Page > Current Page. Use ShadCN Breadcrumb. Build breadcrumb trail by walking `parent_page_id` chain
+  - [x] 6.10 Create space settings panel (accessible to Admins): configure space name, description, icon, default role for new org members, manage space-level member overrides (`space_members` table)
+  - [x] 6.11 Create archived items view: accessible from settings, shows all archived spaces/pages with restore and permanent delete options. Auto-purge note: items archived > 30 days should display a warning
+  - [x] 6.12 Commit spaces and page hierarchy
 
 - [ ] 7.0 Document editor
   - [ ] 7.1 Create `components/editor/tiptap-editor.tsx` — initialize Tiptap editor with extensions: StarterKit (headings H1–H4, bold, italic, strike, code, blockquote, lists, horizontal rule), Image, Table + TableRow + TableHeader + TableCell, TaskList + TaskItem, Link, CodeBlockLowlight (with common language support), Placeholder, Mention (for future comment @mentions)
