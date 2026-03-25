@@ -36,7 +36,9 @@ import {
   Moon,
   Monitor,
   Archive,
+  CreditCard,
 } from "lucide-react";
+import { UpgradeBanner } from "@/components/upgrade-banner";
 
 interface AppShellProps {
   user: {
@@ -155,6 +157,14 @@ export function AppShell({
                     <Archive className="h-4 w-4" />
                     Archived items
                   </DropdownMenuItem>
+                  {role === "owner" && (
+                    <DropdownMenuItem
+                      onClick={() => router.push("/settings/billing")}
+                    >
+                      <CreditCard className="h-4 w-4" />
+                      Billing
+                    </DropdownMenuItem>
+                  )}
                   <DropdownMenuSeparator />
                 </>
               )}
@@ -175,6 +185,9 @@ export function AppShell({
         <header className="flex h-12 items-center gap-2 border-b px-4">
           <SidebarTrigger />
         </header>
+
+        {/* Upgrade banner */}
+        <UpgradeBanner orgId={orgId} />
 
         {/* Main content */}
         <main className="flex-1 overflow-y-auto">{children}</main>
