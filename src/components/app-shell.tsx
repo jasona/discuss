@@ -39,6 +39,7 @@ import {
   CreditCard,
 } from "lucide-react";
 import { UpgradeBanner } from "@/components/upgrade-banner";
+import { NotificationBell } from "@/components/notifications/notification-bell";
 
 interface AppShellProps {
   user: {
@@ -182,8 +183,9 @@ export function AppShell({
 
       <SidebarInset>
         {/* Top bar */}
-        <header className="flex h-12 items-center gap-2 border-b px-4">
+        <header className="flex h-12 items-center justify-between border-b px-4">
           <SidebarTrigger />
+          <NotificationBell />
         </header>
 
         {/* Upgrade banner */}

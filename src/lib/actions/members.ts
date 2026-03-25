@@ -62,7 +62,7 @@ export async function inviteMember(
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + 7);
 
-    await prisma.invitation.create({
+    const invitation = await prisma.invitation.create({
       data: {
         orgId: ctx.orgId,
         email,
@@ -72,6 +72,29 @@ export async function inviteMember(
         expiresAt,
       },
     });
+
+    // Create notification for the invitee if they already have an account
+    const existingUser = await prisma.user.findUnique({
+      where: { email },
+      select: { id: true },
+    });
+
+    if (existingUser) {
+      const org = await prisma.organization.findUnique({
+        where: { id: ctx.orgId },
+        select: { name: true },
+      });
+
+      await prisma.notification.create({
+        data: {
+          userId: existingUser.id,
+          orgId: ctx.orgId,
+          type: "invitation",
+          referenceId: invitation.id,
+          message: `You've been invited to join ${org?.name || "an organization"} as ${role}`,
+        },
+      });
+    }
 
     return { success: true };
   } catch (e) {

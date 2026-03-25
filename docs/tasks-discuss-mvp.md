@@ -195,13 +195,13 @@ Update the file after completing each sub-task, not just after completing an ent
   - [x] 11.8 Handle Free plan default: new orgs start on the Free plan with no Stripe subscription. Create a `subscriptions` record with `plan: 'free'` and `status: 'active'` on org creation
   - [ ] 11.9 Commit billing and subscriptions
 
-- [ ] 12.0 Notifications
-  - [ ] 12.1 Create server actions in `lib/actions/notifications.ts`: `getNotifications(limit, offset)` — fetch user's notifications ordered by `created_at` desc, `markAsRead(notificationId)`, `markAllAsRead()`. All queries filtered by `user_id` from session
-  - [ ] 12.2 Create `components/notifications/notification-bell.tsx` — bell icon in the top navigation bar. Shows unread count badge (red circle with number). Clicking opens a ShadCN Popover with the notification list
-  - [ ] 12.3 Create notification list inside the popover: each notification shows an icon (based on type), a message (e.g., "@Alice mentioned you in Engineering > API Docs"), relative timestamp, and read/unread state (bold for unread). Clicking navigates to the relevant page and comment. Include "Mark all as read" button at the top
-  - [ ] 12.4 Wire up notification creation points: (a) comment @mentions — handled in Task 8.6, (b) comment replies — create notification for parent comment author, (c) org invitations — create notification for the invited user (if they have an account) when invitation is created
-  - [ ] 12.5 Implement invitation email: when `inviteMember` is called, send an email to the invitee with the org name, inviter name, role, and a link to `discusslabs.com/invite/{token}`. Use Supabase's built-in email (via Auth hooks) or integrate a transactional email provider (e.g., Resend)
-  - [ ] 12.6 Create a polling or Supabase Realtime subscription for notification count: periodically refresh the unread count badge so users see new notifications without a full page reload. Supabase Realtime `postgres_changes` on the `notifications` table filtered by `user_id` is the preferred approach
+- [x] 12.0 Notifications
+  - [x] 12.1 Create server actions in `lib/actions/notifications.ts`: `getNotifications(limit, offset)` — fetch user's notifications ordered by `created_at` desc, `markAsRead(notificationId)`, `markAllAsRead()`. All queries filtered by `user_id` from session
+  - [x] 12.2 Create `components/notifications/notification-bell.tsx` — bell icon in the top navigation bar. Shows unread count badge (red circle with number). Clicking opens a ShadCN Popover with the notification list
+  - [x] 12.3 Create notification list inside the popover: each notification shows an icon (based on type), a message (e.g., "@Alice mentioned you in Engineering > API Docs"), relative timestamp, and read/unread state (bold for unread). Clicking navigates to the relevant page and comment. Include "Mark all as read" button at the top
+  - [x] 12.4 Wire up notification creation points: (a) comment @mentions — handled in Task 8.6, (b) comment replies — create notification for parent comment author, (c) org invitations — create notification for the invited user (if they have an account) when invitation is created
+  - [x] 12.5 Implement invitation email: when `inviteMember` is called, send an email to the invitee with the org name, inviter name, role, and a link to `discusslabs.com/invite/{token}`. Use Supabase's built-in email (via Auth hooks) or integrate a transactional email provider (e.g., Resend)
+  - [x] 12.6 Create a polling or Supabase Realtime subscription for notification count: periodically refresh the unread count badge so users see new notifications without a full page reload. Supabase Realtime `postgres_changes` on the `notifications` table filtered by `user_id` is the preferred approach
   - [ ] 12.7 Commit notifications
 
 - [ ] 13.0 App shell & UI polish
