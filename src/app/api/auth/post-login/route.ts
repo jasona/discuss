@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth.config";
 import { prisma } from "@/lib/db";
-import { getTenantUrl, getRootUrl } from "@/lib/tenant";
+import { getRootUrl } from "@/lib/tenant";
 
 /**
  * Post-login redirect handler.
- * Checks if the user belongs to an org and redirects accordingly.
+ * Checks if the user belongs to an org and redirects with tenant param.
  */
 export async function GET() {
   const session = await auth();
@@ -21,8 +21,10 @@ export async function GET() {
   });
 
   if (membership?.organization?.slug) {
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+    // Redirect to a page that sets the tenant cookie client-side
     return NextResponse.redirect(
-      getTenantUrl(membership.organization.slug, "/")
+      `${appUrl}/auth/set-tenant?slug=${membership.organization.slug}`
     );
   }
 

@@ -55,11 +55,8 @@ export async function middleware(request: NextRequest) {
   // ─── Resolve tenant ──────────────────────────────────
   let tenant = extractSubdomain(hostname);
 
-  // Localhost dev: allow tenant override via header or cookie
-  if (
-    !tenant &&
-    (hostname.startsWith("localhost") || hostname.startsWith("127.0.0.1"))
-  ) {
+  // Dev / non-subdomain: allow tenant override via header or cookie
+  if (!tenant) {
     tenant =
       request.headers.get("x-tenant") ||
       request.cookies.get("tenant")?.value ||
@@ -67,14 +64,21 @@ export async function middleware(request: NextRequest) {
   }
 
   // ─── Set tenant context ────────────────────────────────
+  const requestHeaders = new Headers(request.headers);
+
+  if (tenant) {
+    // Forward tenant slug to server components via request headers
+    requestHeaders.set("x-tenant-slug", tenant);
+  }
+
   const response = NextResponse.next({
     request: {
-      headers: new Headers(request.headers),
+      headers: requestHeaders,
     },
   });
 
   if (tenant) {
-    response.headers.set("x-tenant-slug", tenant);
+    // Also persist in cookie for subsequent requests
     response.cookies.set("tenant", tenant, {
       path: "/",
       httpOnly: false,

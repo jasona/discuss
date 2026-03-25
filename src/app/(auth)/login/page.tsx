@@ -32,13 +32,12 @@ export default function LoginPage() {
       redirect: false,
     });
 
-    if (result?.error) {
+    if (result?.error || !result?.ok) {
       toast.error("Invalid email or password");
       setLoading(false);
       return;
     }
 
-    // Redirect to dashboard — check for org membership
     window.location.href = "/api/auth/post-login";
   }
 

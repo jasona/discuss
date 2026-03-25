@@ -16,6 +16,9 @@ import { PageBreadcrumbs } from "@/components/page-breadcrumbs";
 import { PageEditor } from "@/components/editor/page-editor";
 import { PageViewer } from "@/components/editor/page-viewer";
 import { CommentsPanel } from "@/components/comments/comments-panel";
+import { ShareDialog } from "@/components/sharing/share-dialog";
+import { isAtLeast } from "@/lib/permissions";
+import type { OrgRole } from "@/lib/constants";
 
 export default function PageViewPage() {
   const params = useParams<{ spaceId: string; pageId: string }>();
@@ -78,13 +81,18 @@ export default function PageViewPage() {
           breadcrumbs={breadcrumbs}
         />
 
-        {authorInfo && (
-          <CommentsPanel
-            pageId={page.id}
-            currentUserId={authorInfo.currentUserId}
-            currentUserRole={authorInfo.currentUserRole}
-          />
-        )}
+        <div className="flex items-center gap-2">
+          {authorInfo && isAtLeast(authorInfo.currentUserRole as OrgRole, "admin") && (
+            <ShareDialog pageId={page.id} />
+          )}
+          {authorInfo && (
+            <CommentsPanel
+              pageId={page.id}
+              currentUserId={authorInfo.currentUserId}
+              currentUserRole={authorInfo.currentUserRole}
+            />
+          )}
+        </div>
       </div>
 
       {canEdit ? (

@@ -176,12 +176,12 @@ Update the file after completing each sub-task, not just after completing an ent
   - [x] 9.5 Ensure search respects permissions: the RLS policies on `pages` should automatically filter results to only pages the user can access. Verify with a test: a user without space access should not see results from that space
   - [x] 9.6 Commit search
 
-- [ ] 10.0 Sharing
-  - [ ] 10.1 Internal sharing is handled by space-level permissions (Task 6.0). Verify that page access correctly inherits from `space_members` role or `spaces.default_role`. No additional UI needed — users access pages they have space access to
-  - [ ] 10.2 Create server action `toggleExternalSharing(pageId, enabled)` in `lib/actions/sharing.ts`: if enabling, generate a random unguessable slug (e.g., `nanoid(21)`), set `is_externally_shared = true` and `external_share_slug` on the page. If disabling, set `is_externally_shared = false` and clear the slug. Enforce plan limits (Free: not available, Starter: max 5 externally shared docs, Pro: unlimited)
-  - [ ] 10.3 Create `components/sharing/share-dialog.tsx` — ShadCN Dialog with: a toggle switch for "Share publicly", the generated public URL displayed with a copy-to-clipboard button when enabled, a note about plan limits if applicable. Open from a "Share" button in the page header. Only visible to Admins
-  - [ ] 10.4 Create `app/public/[slug]/page.tsx` — public route that fetches the page by `external_share_slug` where `is_externally_shared = true`. Render the page content using the read-only viewer component. No sidebar, no auth required. Include a "Powered by Discuss" footer with a link to `discusslabs.com`. Return 404 if slug is invalid or sharing is disabled
-  - [ ] 10.5 Add RLS policy for public pages: allow anonymous SELECT on `pages` where `is_externally_shared = true` and the request matches by `external_share_slug`. Ensure no other columns (comments, etc.) leak
+- [x] 10.0 Sharing
+  - [x] 10.1 Internal sharing is handled by space-level permissions (Task 6.0). Verify that page access correctly inherits from `space_members` role or `spaces.default_role`. No additional UI needed — users access pages they have space access to
+  - [x] 10.2 Create server action `toggleExternalSharing(pageId, enabled)` in `lib/actions/sharing.ts`: if enabling, generate a random unguessable slug (e.g., `nanoid(21)`), set `is_externally_shared = true` and `external_share_slug` on the page. If disabling, set `is_externally_shared = false` and clear the slug. Enforce plan limits (Free: not available, Starter: max 5 externally shared docs, Pro: unlimited)
+  - [x] 10.3 Create `components/sharing/share-dialog.tsx` — ShadCN Dialog with: a toggle switch for "Share publicly", the generated public URL displayed with a copy-to-clipboard button when enabled, a note about plan limits if applicable. Open from a "Share" button in the page header. Only visible to Admins
+  - [x] 10.4 Create `app/public/[slug]/page.tsx` — public route that fetches the page by `external_share_slug` where `is_externally_shared = true`. Render the page content using the read-only viewer component. No sidebar, no auth required. Include a "Powered by Discuss" footer with a link to `discusslabs.com`. Return 404 if slug is invalid or sharing is disabled
+  - [x] 10.5 Add RLS policy for public pages: allow anonymous SELECT on `pages` where `is_externally_shared = true` and the request matches by `external_share_slug`. Ensure no other columns (comments, etc.) leak
   - [ ] 10.6 Commit sharing
 
 - [ ] 11.0 Billing & subscriptions

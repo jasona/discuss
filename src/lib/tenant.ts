@@ -6,8 +6,9 @@ export function getTenantUrl(slug: string, path: string = "/"): string {
   const protocol = process.env.NODE_ENV === "production" ? "https" : "http";
 
   if (process.env.NODE_ENV !== "production") {
-    // Local dev: use localhost with tenant cookie
-    return `${protocol}://localhost:3000${path}`;
+    // Dev: use APP_URL with tenant cookie (no subdomains)
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || `${protocol}://localhost:3000`;
+    return `${appUrl}${path}`;
   }
 
   return `${protocol}://${slug}.${domain}${path}`;

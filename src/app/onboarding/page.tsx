@@ -15,7 +15,6 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { createOrg, checkSlugAvailability } from "@/lib/actions/org";
-import { getTenantUrl } from "@/lib/tenant";
 
 export default function OnboardingPage() {
   const [step, setStep] = useState(1);
@@ -89,9 +88,8 @@ export default function OnboardingPage() {
   }
 
   async function handleFinish() {
-    // Redirect to the org subdomain
-    const url = getTenantUrl(createdSlug, "/");
-    window.location.href = url;
+    // Set tenant cookie and redirect to dashboard
+    window.location.href = `/auth/set-tenant?slug=${createdSlug}`;
   }
 
   if (step === 2) {

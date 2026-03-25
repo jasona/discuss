@@ -34,7 +34,10 @@ export async function requireOrg() {
   const user = await requireAuth();
   const tenantSlug = await getTenantSlug();
 
+  console.log("[requireOrg] user:", user?.id, "tenantSlug:", tenantSlug);
+
   if (!tenantSlug) {
+    console.log("[requireOrg] no tenant slug, redirecting to login");
     redirect(getRootUrl("/login"));
   }
 
