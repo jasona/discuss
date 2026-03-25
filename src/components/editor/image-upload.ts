@@ -1,35 +1,27 @@
-import { createClient } from "@/lib/supabase/client";
 import { nanoid } from "nanoid";
 
 /**
- * Upload an image to Supabase Storage and return the public URL.
- * Files are stored under documents/{org_id}/{random_id}.{ext}
+ * Upload an image via the API route and return the public URL.
  */
 export async function uploadImage(
   file: File,
   orgId: string
 ): Promise<string | null> {
-  const supabase = createClient();
+  try {
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("orgId", orgId);
 
-  const ext = file.name.split(".").pop() || "png";
-  const fileName = `${nanoid(12)}.${ext}`;
-  const filePath = `${orgId}/${fileName}`;
-
-  const { error } = await supabase.storage
-    .from("documents")
-    .upload(filePath, file, {
-      contentType: file.type,
-      upsert: false,
+    const res = await fetch("/api/upload", {
+      method: "POST",
+      body: formData,
     });
 
-  if (error) {
-    console.error("Upload error:", error);
+    if (!res.ok) return null;
+
+    const data = await res.json();
+    return data.url || null;
+  } catch {
     return null;
   }
-
-  const {
-    data: { publicUrl },
-  } = supabase.storage.from("documents").getPublicUrl(filePath);
-
-  return publicUrl;
 }

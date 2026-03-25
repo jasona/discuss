@@ -3,7 +3,7 @@
 import { Suspense, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
+import { signIn } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -34,55 +34,52 @@ function SignupForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const inviteToken = searchParams.get("invite");
-  const supabase = createClient();
 
   async function handleEmailSignup(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
 
-    const redirectTo = inviteToken
-      ? `${window.location.origin}/auth/callback?invite=${inviteToken}`
-      : `${window.location.origin}/auth/callback`;
-
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: { full_name: name },
-        emailRedirectTo: redirectTo,
-      },
+    // Register the user via server action
+    const res = await fetch("/api/auth/register", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name, email, password }),
     });
 
-    if (error) {
-      toast.error(error.message);
+    const data = await res.json();
+
+    if (!res.ok) {
+      toast.error(data.error || "Failed to create account");
       setLoading(false);
       return;
     }
 
-    // If the session exists immediately, email confirmation is disabled — go straight through
-    if (data.session) {
-      window.location.href = inviteToken ? `/auth/callback?invite=${inviteToken}` : "/auth/callback";
+    // Auto-sign in after registration
+    const result = await signIn("credentials", {
+      email,
+      password,
+      redirect: false,
+    });
+
+    if (result?.error) {
+      toast.error("Account created but sign-in failed. Please log in.");
+      router.push("/login");
       return;
     }
 
-    // Otherwise email confirmation is required
-    toast.success("Check your email to confirm your account.");
-    router.push("/login");
+    // Redirect to onboarding or invitation
+    if (inviteToken) {
+      window.location.href = `/invite/${inviteToken}`;
+    } else {
+      window.location.href = "/onboarding";
+    }
   }
 
-  async function handleOAuthSignup(provider: "google" | "github") {
-    const redirectTo = inviteToken
-      ? `${window.location.origin}/auth/callback?invite=${inviteToken}`
-      : `${window.location.origin}/auth/callback`;
-
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider,
-      options: { redirectTo },
-    });
-
-    if (error) {
-      toast.error(error.message);
-    }
+  function handleOAuthSignup(provider: "google" | "github") {
+    const callbackUrl = inviteToken
+      ? `/invite/${inviteToken}`
+      : "/onboarding";
+    signIn(provider, { callbackUrl });
   }
 
   return (

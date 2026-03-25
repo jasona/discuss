@@ -1,7 +1,7 @@
 "use server";
 
-import { createClient } from "@/lib/supabase/server";
-import { createAdminClient } from "@/lib/supabase/admin";
+import { auth } from "@/lib/auth.config";
+import { prisma } from "@/lib/db";
 
 export interface AcceptInviteResult {
   success: boolean;
@@ -10,40 +10,29 @@ export interface AcceptInviteResult {
 }
 
 export async function getInvitationByToken(token: string) {
-  const admin = createAdminClient();
+  const invitation = await prisma.invitation.findFirst({
+    where: {
+      token,
+      acceptedAt: null,
+      expiresAt: { gt: new Date() },
+    },
+    include: {
+      organization: { select: { name: true, slug: true } },
+    },
+  });
 
-  const { data, error } = await admin
-    .from("invitations")
-    .select("*, organizations(name, slug)")
-    .eq("token", token)
-    .is("accepted_at", null)
-    .gt("expires_at", new Date().toISOString())
-    .maybeSingle();
-
-  if (error || !data) {
-    return null;
-  }
-
-  return data;
+  return invitation;
 }
 
 export async function acceptInvitation(
   token: string
 ): Promise<AcceptInviteResult> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
+  const session = await auth();
+  if (!session?.user?.id) {
     return { success: false, error: "Not authenticated" };
   }
 
-  const admin = createAdminClient();
-
-  // Fetch the invitation
   const invitation = await getInvitationByToken(token);
-
   if (!invitation) {
     return {
       success: false,
@@ -52,54 +41,39 @@ export async function acceptInvitation(
   }
 
   // Check if user is already a member
-  const { data: existing } = await admin
-    .from("org_members")
-    .select("id")
-    .eq("org_id", invitation.org_id)
-    .eq("user_id", user.id)
-    .maybeSingle();
+  const existing = await prisma.orgMember.findUnique({
+    where: {
+      orgId_userId: { orgId: invitation.orgId, userId: session.user.id },
+    },
+  });
 
   if (existing) {
-    // Already a member — just redirect
-    const org = invitation.organizations as { slug: string };
-    return { success: true, orgSlug: org.slug };
+    return { success: true, orgSlug: invitation.organization.slug };
   }
 
   // Add user to org
-  const { error: memberError } = await admin.from("org_members").insert({
-    org_id: invitation.org_id,
-    user_id: user.id,
-    default_role: invitation.default_role,
+  await prisma.orgMember.create({
+    data: {
+      orgId: invitation.orgId,
+      userId: session.user.id,
+      defaultRole: invitation.defaultRole,
+    },
   });
-
-  if (memberError) {
-    return { success: false, error: "Failed to join organization" };
-  }
 
   // Mark invitation as accepted
-  await admin
-    .from("invitations")
-    .update({ accepted_at: new Date().toISOString() })
-    .eq("id", invitation.id);
-
-  // Update seat count
-  const { count } = await admin
-    .from("org_members")
-    .select("*", { count: "exact", head: true })
-    .eq("org_id", invitation.org_id);
-
-  if (count !== null) {
-    await admin
-      .from("subscriptions")
-      .update({ seat_count: count })
-      .eq("org_id", invitation.org_id);
-  }
-
-  // Set active org
-  await admin.auth.admin.updateUserById(user.id, {
-    app_metadata: { active_org_id: invitation.org_id },
+  await prisma.invitation.update({
+    where: { id: invitation.id },
+    data: { acceptedAt: new Date() },
   });
 
-  const org = invitation.organizations as { slug: string };
-  return { success: true, orgSlug: org.slug };
+  // Update seat count
+  const count = await prisma.orgMember.count({
+    where: { orgId: invitation.orgId },
+  });
+  await prisma.subscription.updateMany({
+    where: { orgId: invitation.orgId },
+    data: { seatCount: count },
+  });
+
+  return { success: true, orgSlug: invitation.organization.slug };
 }

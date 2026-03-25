@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import { createClient } from "@/lib/supabase/client";
+import { useSession } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { buttonVariants } from "@/components/ui/button";
 import {
@@ -29,23 +29,17 @@ interface InvitationInfo {
 export default function InviteAcceptPage() {
   const params = useParams<{ token: string }>();
   const token = params.token;
+  const { data: session, status } = useSession();
 
   const [invitation, setInvitation] = useState<InvitationInfo | null>(null);
   const [loading, setLoading] = useState(true);
   const [accepting, setAccepting] = useState(false);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const isAuthenticated = status === "authenticated";
 
   useEffect(() => {
     async function load() {
-      // Check auth status
-      const supabase = createClient();
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      setIsAuthenticated(!!user);
-
-      // Fetch invitation details
       const inv = await getInvitationByToken(token);
       if (!inv) {
         setError("This invitation is invalid, expired, or has already been accepted.");
@@ -53,17 +47,18 @@ export default function InviteAcceptPage() {
         return;
       }
 
-      const org = inv.organizations as { name: string; slug: string };
       setInvitation({
-        orgName: org.name,
-        role: inv.default_role,
+        orgName: inv.organization.name,
+        role: inv.defaultRole,
         email: inv.email,
       });
       setLoading(false);
     }
 
-    load();
-  }, [token]);
+    if (status !== "loading") {
+      load();
+    }
+  }, [token, status]);
 
   async function handleAccept() {
     setAccepting(true);
@@ -79,7 +74,7 @@ export default function InviteAcceptPage() {
     window.location.href = getTenantUrl(result.orgSlug!, "/");
   }
 
-  if (loading) {
+  if (loading || status === "loading") {
     return (
       <Card>
         <CardContent className="py-8 text-center text-muted-foreground">

@@ -1,83 +1,36 @@
 "use server";
 
-import { createClient } from "@/lib/supabase/server";
-import { createAdminClient } from "@/lib/supabase/admin";
-import { getTenantSlug } from "@/lib/tenant.server";
+import { prisma } from "@/lib/db";
+import { getOrgContext } from "@/lib/actions/context";
 import { PLAN_LIMITS } from "@/lib/constants";
-import type { OrgRole, PlanType, SpaceDefaultRole } from "@/lib/constants";
+import type { PlanType, SpaceDefaultRole } from "@/lib/constants";
 import { canManageSpace } from "@/lib/permissions";
 
 // ─── Helpers ─────────────────────────────────────────────
 
-async function getOrgContext() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) throw new Error("Not authenticated");
-
-  const tenantSlug = await getTenantSlug();
-  if (!tenantSlug) throw new Error("No tenant context");
-
-  const admin = createAdminClient();
-  const { data: org } = await admin
-    .from("organizations")
-    .select("id")
-    .eq("slug", tenantSlug)
-    .single();
-
-  if (!org) throw new Error("Organization not found");
-
-  const { data: membership } = await admin
-    .from("org_members")
-    .select("default_role")
-    .eq("org_id", org.id)
-    .eq("user_id", user.id)
-    .single();
-
-  if (!membership) throw new Error("Not a member of this organization");
-
-  return {
-    userId: user.id,
-    orgId: org.id,
-    role: membership.default_role as OrgRole,
-  };
-}
-
 async function getOrgPlan(orgId: string): Promise<PlanType> {
-  const admin = createAdminClient();
-  const { data } = await admin
-    .from("subscriptions")
-    .select("plan")
-    .eq("org_id", orgId)
-    .single();
+  const data = await prisma.subscription.findUnique({
+    where: { orgId },
+    select: { plan: true },
+  });
 
   return (data?.plan as PlanType) || "free";
 }
 
 async function getSpaceCount(orgId: string): Promise<number> {
-  const admin = createAdminClient();
-  const { count } = await admin
-    .from("spaces")
-    .select("*", { count: "exact", head: true })
-    .eq("org_id", orgId)
-    .eq("is_archived", false);
-
-  return count || 0;
+  return prisma.space.count({
+    where: { orgId, isArchived: false },
+  });
 }
 
 async function getUserSpaceRole(
   spaceId: string,
   userId: string
 ): Promise<"admin" | "editor" | "viewer" | "none"> {
-  const admin = createAdminClient();
-  const { data } = await admin
-    .from("space_members")
-    .select("role")
-    .eq("space_id", spaceId)
-    .eq("user_id", userId)
-    .maybeSingle();
+  const data = await prisma.spaceMember.findFirst({
+    where: { spaceId, userId },
+    select: { role: true },
+  });
 
   return (data?.role as "admin" | "editor" | "viewer") || "none";
 }
@@ -139,42 +92,35 @@ export async function createSpace(
       };
     }
 
-    const admin = createAdminClient();
-
     // Get next sort order
-    const { data: lastSpace } = await admin
-      .from("spaces")
-      .select("sort_order")
-      .eq("org_id", ctx.orgId)
-      .order("sort_order", { ascending: false })
-      .limit(1)
-      .maybeSingle();
+    const lastSpace = await prisma.space.findFirst({
+      where: { orgId: ctx.orgId },
+      orderBy: { sortOrder: "desc" },
+      select: { sortOrder: true },
+    });
 
-    const sortOrder = (lastSpace?.sort_order ?? -1) + 1;
+    const sortOrder = (lastSpace?.sortOrder ?? -1) + 1;
 
-    const { data: space, error } = await admin
-      .from("spaces")
-      .insert({
-        org_id: ctx.orgId,
+    const space = await prisma.space.create({
+      data: {
+        orgId: ctx.orgId,
         name,
         description,
         icon,
-        default_role: defaultRole,
-        sort_order: sortOrder,
-        created_by: ctx.userId,
-      })
-      .select("id")
-      .single();
-
-    if (error || !space) {
-      return { success: false, error: "Failed to create space" };
-    }
+        defaultRole,
+        sortOrder,
+        createdBy: ctx.userId,
+      },
+      select: { id: true },
+    });
 
     // Add creator as space admin
-    await admin.from("space_members").insert({
-      space_id: space.id,
-      user_id: ctx.userId,
-      role: "admin",
+    await prisma.spaceMember.create({
+      data: {
+        spaceId: space.id,
+        userId: ctx.userId,
+        role: "admin",
+      },
     });
 
     return { success: true, spaceId: space.id };
@@ -202,20 +148,16 @@ export async function updateSpace(
       return { success: false, error: "Insufficient permissions" };
     }
 
-    const admin = createAdminClient();
     const updateData: Record<string, unknown> = {};
     if (updates.name !== undefined) updateData.name = updates.name;
     if (updates.description !== undefined) updateData.description = updates.description;
     if (updates.icon !== undefined) updateData.icon = updates.icon;
-    if (updates.defaultRole !== undefined) updateData.default_role = updates.defaultRole;
+    if (updates.defaultRole !== undefined) updateData.defaultRole = updates.defaultRole;
 
-    const { error } = await admin
-      .from("spaces")
-      .update(updateData)
-      .eq("id", spaceId)
-      .eq("org_id", ctx.orgId);
-
-    if (error) return { success: false, error: "Failed to update space" };
+    await prisma.space.updateMany({
+      where: { id: spaceId, orgId: ctx.orgId },
+      data: updateData,
+    });
 
     return { success: true };
   } catch (e) {
@@ -236,21 +178,16 @@ export async function archiveSpace(
       return { success: false, error: "Insufficient permissions" };
     }
 
-    const admin = createAdminClient();
-    const { error } = await admin
-      .from("spaces")
-      .update({ is_archived: true })
-      .eq("id", spaceId)
-      .eq("org_id", ctx.orgId);
-
-    if (error) return { success: false, error: "Failed to archive space" };
+    await prisma.space.updateMany({
+      where: { id: spaceId, orgId: ctx.orgId },
+      data: { isArchived: true },
+    });
 
     // Also archive all pages in this space
-    await admin
-      .from("pages")
-      .update({ is_archived: true })
-      .eq("space_id", spaceId)
-      .eq("org_id", ctx.orgId);
+    await prisma.page.updateMany({
+      where: { spaceId, orgId: ctx.orgId },
+      data: { isArchived: true },
+    });
 
     return { success: true };
   } catch (e) {
@@ -271,21 +208,16 @@ export async function restoreSpace(
       return { success: false, error: "Insufficient permissions" };
     }
 
-    const admin = createAdminClient();
-    const { error } = await admin
-      .from("spaces")
-      .update({ is_archived: false })
-      .eq("id", spaceId)
-      .eq("org_id", ctx.orgId);
-
-    if (error) return { success: false, error: "Failed to restore space" };
+    await prisma.space.updateMany({
+      where: { id: spaceId, orgId: ctx.orgId },
+      data: { isArchived: false },
+    });
 
     // Restore pages in this space
-    await admin
-      .from("pages")
-      .update({ is_archived: false })
-      .eq("space_id", spaceId)
-      .eq("org_id", ctx.orgId);
+    await prisma.page.updateMany({
+      where: { spaceId, orgId: ctx.orgId },
+      data: { isArchived: false },
+    });
 
     return { success: true };
   } catch (e) {
@@ -306,29 +238,23 @@ export async function deleteSpace(
       return { success: false, error: "Insufficient permissions" };
     }
 
-    const admin = createAdminClient();
-
     // Only allow deletion of archived spaces
-    const { data: space } = await admin
-      .from("spaces")
-      .select("is_archived")
-      .eq("id", spaceId)
-      .eq("org_id", ctx.orgId)
-      .single();
+    const space = await prisma.space.findFirst({
+      where: { id: spaceId, orgId: ctx.orgId },
+      select: { isArchived: true },
+    });
 
     if (!space) return { success: false, error: "Space not found" };
-    if (!space.is_archived) {
+    if (!space.isArchived) {
       return { success: false, error: "Space must be archived before deletion" };
     }
 
     // Delete all pages in this space
-    await admin.from("pages").delete().eq("space_id", spaceId);
+    await prisma.page.deleteMany({ where: { spaceId } });
     // Delete space members
-    await admin.from("space_members").delete().eq("space_id", spaceId);
+    await prisma.spaceMember.deleteMany({ where: { spaceId } });
     // Delete the space
-    const { error } = await admin.from("spaces").delete().eq("id", spaceId);
-
-    if (error) return { success: false, error: "Failed to delete space" };
+    await prisma.space.delete({ where: { id: spaceId } });
 
     return { success: true };
   } catch (e) {
@@ -341,49 +267,50 @@ export async function deleteSpace(
 export async function getSpacesWithPages(): Promise<SpaceWithPages[]> {
   try {
     const ctx = await getOrgContext();
-    const admin = createAdminClient();
 
     // Fetch all non-archived spaces for this org
-    const { data: spaces } = await admin
-      .from("spaces")
-      .select("*")
-      .eq("org_id", ctx.orgId)
-      .eq("is_archived", false)
-      .order("sort_order", { ascending: true });
-
-    if (!spaces) return [];
+    const spaces = await prisma.space.findMany({
+      where: { orgId: ctx.orgId, isArchived: false },
+      orderBy: { sortOrder: "asc" },
+    });
 
     // Fetch all non-archived pages for this org
-    const { data: pages } = await admin
-      .from("pages")
-      .select("id, space_id, parent_page_id, title, sort_order, is_archived")
-      .eq("org_id", ctx.orgId)
-      .eq("is_archived", false)
-      .order("sort_order", { ascending: true });
+    const pages = await prisma.page.findMany({
+      where: { orgId: ctx.orgId, isArchived: false },
+      select: {
+        id: true,
+        spaceId: true,
+        parentPageId: true,
+        title: true,
+        sortOrder: true,
+        isArchived: true,
+      },
+      orderBy: { sortOrder: "asc" },
+    });
 
     // Get user's space memberships for filtering
-    const { data: memberships } = await admin
-      .from("space_members")
-      .select("space_id, role")
-      .eq("user_id", ctx.userId);
+    const memberships = await prisma.spaceMember.findMany({
+      where: { userId: ctx.userId },
+      select: { spaceId: true, role: true },
+    });
 
     const membershipMap = new Map(
-      (memberships || []).map((m) => [m.space_id, m.role])
+      memberships.map((m) => [m.spaceId, m.role])
     );
 
-    // Filter spaces: user can see if they're owner/admin, or have space membership, or space has a default_role
+    // Filter spaces: user can see if they're owner/admin, or have space membership, or space has a defaultRole
     const visibleSpaces = spaces.filter((s) => {
       if (ctx.role === "owner" || ctx.role === "admin") return true;
       if (membershipMap.has(s.id)) return true;
-      return s.default_role !== "none";
+      return s.defaultRole !== "none";
     });
 
     // Build page trees per space
     const pagesBySpace = new Map<string, typeof pages>();
-    for (const page of pages || []) {
-      const list = pagesBySpace.get(page.space_id) || [];
+    for (const page of pages) {
+      const list = pagesBySpace.get(page.spaceId) || [];
       list.push(page);
-      pagesBySpace.set(page.space_id, list);
+      pagesBySpace.set(page.spaceId, list);
     }
 
     return visibleSpaces.map((s) => {
@@ -392,15 +319,15 @@ export async function getSpacesWithPages(): Promise<SpaceWithPages[]> {
 
       return {
         id: s.id,
-        orgId: s.org_id,
+        orgId: s.orgId,
         name: s.name,
         description: s.description,
         icon: s.icon,
-        defaultRole: s.default_role as SpaceDefaultRole,
-        sortOrder: s.sort_order,
-        isArchived: s.is_archived,
-        createdBy: s.created_by,
-        createdAt: s.created_at,
+        defaultRole: s.defaultRole as SpaceDefaultRole,
+        sortOrder: s.sortOrder,
+        isArchived: s.isArchived,
+        createdBy: s.createdBy,
+        createdAt: s.createdAt as unknown as string,
         pages: pageTree,
       };
     });
@@ -414,28 +341,24 @@ export async function getSpacesWithPages(): Promise<SpaceWithPages[]> {
 export async function getSpace(spaceId: string): Promise<Space | null> {
   try {
     const ctx = await getOrgContext();
-    const admin = createAdminClient();
 
-    const { data } = await admin
-      .from("spaces")
-      .select("*")
-      .eq("id", spaceId)
-      .eq("org_id", ctx.orgId)
-      .single();
+    const data = await prisma.space.findFirst({
+      where: { id: spaceId, orgId: ctx.orgId },
+    });
 
     if (!data) return null;
 
     return {
       id: data.id,
-      orgId: data.org_id,
+      orgId: data.orgId,
       name: data.name,
       description: data.description,
       icon: data.icon,
-      defaultRole: data.default_role as SpaceDefaultRole,
-      sortOrder: data.sort_order,
-      isArchived: data.is_archived,
-      createdBy: data.created_by,
-      createdAt: data.created_at,
+      defaultRole: data.defaultRole as SpaceDefaultRole,
+      sortOrder: data.sortOrder,
+      isArchived: data.isArchived,
+      createdBy: data.createdBy,
+      createdAt: data.createdAt as unknown as string,
     };
   } catch {
     return null;
@@ -457,42 +380,37 @@ export async function getArchivedItems(): Promise<ArchivedItem[]> {
     const ctx = await getOrgContext();
     if (ctx.role !== "owner" && ctx.role !== "admin") return [];
 
-    const admin = createAdminClient();
-
-    const [{ data: spaces }, { data: pages }] = await Promise.all([
-      admin
-        .from("spaces")
-        .select("id, name, created_at")
-        .eq("org_id", ctx.orgId)
-        .eq("is_archived", true)
-        .order("created_at", { ascending: false }),
-      admin
-        .from("pages")
-        .select("id, title, space_id, created_at, spaces!inner(name)")
-        .eq("org_id", ctx.orgId)
-        .eq("is_archived", true)
-        .order("created_at", { ascending: false }),
+    const [spaces, pages] = await Promise.all([
+      prisma.space.findMany({
+        where: { orgId: ctx.orgId, isArchived: true },
+        select: { id: true, name: true, createdAt: true },
+        orderBy: { createdAt: "desc" },
+      }),
+      prisma.page.findMany({
+        where: { orgId: ctx.orgId, isArchived: true },
+        include: { space: { select: { name: true } } },
+        orderBy: { createdAt: "desc" },
+      }),
     ]);
 
     const items: ArchivedItem[] = [];
 
-    for (const s of spaces || []) {
+    for (const s of spaces) {
       items.push({
         id: s.id,
         type: "space",
         name: s.name,
-        archivedAt: s.created_at,
+        archivedAt: s.createdAt as unknown as string,
       });
     }
 
-    for (const p of pages || []) {
-      const spaceName = (p.spaces as unknown as { name: string })?.name;
+    for (const p of pages) {
       items.push({
         id: p.id,
         type: "page",
         name: p.title,
-        spaceName,
-        archivedAt: p.created_at,
+        spaceName: p.space?.name,
+        archivedAt: p.createdAt as unknown as string,
       });
     }
 
@@ -516,29 +434,22 @@ export async function getSpaceMembers(
   spaceId: string
 ): Promise<SpaceMemberInfo[]> {
   try {
-    const ctx = await getOrgContext();
-    const admin = createAdminClient();
+    await getOrgContext();
 
-    const { data: members } = await admin
-      .from("space_members")
-      .select("id, user_id, role")
-      .eq("space_id", spaceId);
+    const members = await prisma.spaceMember.findMany({
+      where: { spaceId },
+      include: {
+        user: { select: { email: true, name: true } },
+      },
+    });
 
-    if (!members) return [];
-
-    const result: SpaceMemberInfo[] = [];
-    for (const m of members) {
-      const { data: userData } = await admin.auth.admin.getUserById(m.user_id);
-      result.push({
-        id: m.id,
-        userId: m.user_id,
-        email: userData?.user?.email || "unknown",
-        fullName: userData?.user?.user_metadata?.full_name || null,
-        role: m.role as "admin" | "editor" | "viewer",
-      });
-    }
-
-    return result;
+    return members.map((m) => ({
+      id: m.id,
+      userId: m.userId,
+      email: m.user?.email || "unknown",
+      fullName: m.user?.name || null,
+      role: m.role as "admin" | "editor" | "viewer",
+    }));
   } catch {
     return [];
   }
@@ -559,14 +470,11 @@ export async function updateSpaceMember(
       return { success: false, error: "Insufficient permissions" };
     }
 
-    const admin = createAdminClient();
-    const { error } = await admin
-      .from("space_members")
-      .update({ role })
-      .eq("space_id", spaceId)
-      .eq("user_id", userId);
+    await prisma.spaceMember.updateMany({
+      where: { spaceId, userId },
+      data: { role },
+    });
 
-    if (error) return { success: false, error: "Failed to update role" };
     return { success: true };
   } catch (e) {
     return { success: false, error: (e as Error).message };
@@ -588,14 +496,14 @@ export async function addSpaceMember(
       return { success: false, error: "Insufficient permissions" };
     }
 
-    const admin = createAdminClient();
-    const { error } = await admin.from("space_members").insert({
-      space_id: spaceId,
-      user_id: userId,
-      role,
+    await prisma.spaceMember.create({
+      data: {
+        spaceId,
+        userId,
+        role,
+      },
     });
 
-    if (error) return { success: false, error: "Failed to add member" };
     return { success: true };
   } catch (e) {
     return { success: false, error: (e as Error).message };
@@ -616,14 +524,10 @@ export async function removeSpaceMember(
       return { success: false, error: "Insufficient permissions" };
     }
 
-    const admin = createAdminClient();
-    const { error } = await admin
-      .from("space_members")
-      .delete()
-      .eq("space_id", spaceId)
-      .eq("user_id", userId);
+    await prisma.spaceMember.deleteMany({
+      where: { spaceId, userId },
+    });
 
-    if (error) return { success: false, error: "Failed to remove member" };
     return { success: true };
   } catch (e) {
     return { success: false, error: (e as Error).message };
@@ -635,11 +539,11 @@ export async function removeSpaceMember(
 function buildPageTree(
   pages: {
     id: string;
-    space_id: string;
-    parent_page_id: string | null;
+    spaceId: string;
+    parentPageId: string | null;
     title: string;
-    sort_order: number;
-    is_archived: boolean;
+    sortOrder: number;
+    isArchived: boolean;
   }[]
 ): PageTreeNode[] {
   const nodeMap = new Map<string, PageTreeNode>();
@@ -649,11 +553,11 @@ function buildPageTree(
   for (const p of pages) {
     nodeMap.set(p.id, {
       id: p.id,
-      spaceId: p.space_id,
-      parentPageId: p.parent_page_id,
+      spaceId: p.spaceId,
+      parentPageId: p.parentPageId,
       title: p.title,
-      sortOrder: p.sort_order,
-      isArchived: p.is_archived,
+      sortOrder: p.sortOrder,
+      isArchived: p.isArchived,
       children: [],
     });
   }

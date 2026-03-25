@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { createServerClient } from "@supabase/ssr";
 
 const APP_DOMAIN = process.env.NEXT_PUBLIC_APP_DOMAIN || "discusslabs.com";
 
@@ -23,33 +22,26 @@ const RESERVED_SUBDOMAINS = new Set([
  * Returns null for root domain, reserved subdomains, or localhost without override.
  */
 export function extractSubdomain(hostname: string): string | null {
-  // Strip port if present
   const host = hostname.split(":")[0];
 
-  // Localhost development: use `x-tenant` header or `tenant` cookie
   if (host === "localhost" || host === "127.0.0.1") {
-    return null; // handled separately via header/cookie
+    return null;
   }
 
-  // Check if the host ends with our app domain
   if (!host.endsWith(`.${APP_DOMAIN}`) && host !== APP_DOMAIN) {
     return null;
   }
 
-  // Root domain — no subdomain
   if (host === APP_DOMAIN || host === `www.${APP_DOMAIN}`) {
     return null;
   }
 
-  // Extract subdomain: "acme.discusslabs.com" → "acme"
   const subdomain = host.slice(0, -(APP_DOMAIN.length + 1));
 
-  // Reject multi-level subdomains (e.g., "a.b.discusslabs.com")
   if (subdomain.includes(".")) {
     return null;
   }
 
-  // Reject reserved subdomains
   if (RESERVED_SUBDOMAINS.has(subdomain)) {
     return null;
   }
@@ -58,54 +50,31 @@ export function extractSubdomain(hostname: string): string | null {
 }
 
 export async function middleware(request: NextRequest) {
-  const { pathname } = request.nextUrl;
   const hostname = request.headers.get("host") || "";
 
   // ─── Resolve tenant ──────────────────────────────────
   let tenant = extractSubdomain(hostname);
 
   // Localhost dev: allow tenant override via header or cookie
-  if (!tenant && (hostname.startsWith("localhost") || hostname.startsWith("127.0.0.1"))) {
+  if (
+    !tenant &&
+    (hostname.startsWith("localhost") || hostname.startsWith("127.0.0.1"))
+  ) {
     tenant =
       request.headers.get("x-tenant") ||
       request.cookies.get("tenant")?.value ||
       null;
   }
 
-  // ─── Supabase session refresh ────────────────────────
-  // Refresh the auth session on every request so cookies stay fresh
-  let response = NextResponse.next({
+  // ─── Set tenant context ────────────────────────────────
+  const response = NextResponse.next({
     request: {
       headers: new Headers(request.headers),
     },
   });
 
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() {
-          return request.cookies.getAll();
-        },
-        setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value, options }) => {
-            request.cookies.set(name, value);
-            response.cookies.set(name, value, options);
-          });
-        },
-      },
-    }
-  );
-
-  // Refresh the session (important for server components)
-  await supabase.auth.getUser();
-
-  // ─── Set tenant context header ───────────────────────
-  // Downstream server components can read this to know which org is active
   if (tenant) {
     response.headers.set("x-tenant-slug", tenant);
-    // Also set a cookie so client components can access it
     response.cookies.set("tenant", tenant, {
       path: "/",
       httpOnly: false,
@@ -126,13 +95,6 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    /*
-     * Match all request paths except:
-     * - _next/static (static files)
-     * - _next/image (image optimization)
-     * - favicon.ico, sitemap.xml, robots.txt
-     * - api/health (health check for Coolify)
-     */
     "/((?!_next/static|_next/image|favicon.ico|sitemap.xml|robots.txt|api/health).*)",
   ],
 };

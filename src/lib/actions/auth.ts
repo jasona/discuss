@@ -1,11 +1,7 @@
 "use server";
 
-import { createClient } from "@/lib/supabase/server";
-import { redirect } from "next/navigation";
-import { getRootUrl } from "@/lib/tenant";
+import { signOut as authSignOut } from "@/lib/auth.config";
 
 export async function signOut() {
-  const supabase = await createClient();
-  await supabase.auth.signOut();
-  redirect(getRootUrl("/login"));
+  await authSignOut({ redirectTo: "/login" });
 }

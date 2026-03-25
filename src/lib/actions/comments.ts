@@ -1,71 +1,32 @@
 "use server";
 
-import { createClient } from "@/lib/supabase/server";
-import { createAdminClient } from "@/lib/supabase/admin";
-import { getTenantSlug } from "@/lib/tenant.server";
+import { prisma } from "@/lib/db";
+import { getOrgContext } from "@/lib/actions/context";
 import type { OrgRole } from "@/lib/constants";
 import { canViewSpace } from "@/lib/permissions";
 
 // ─── Helpers ─────────────────────────────────────────────
 
-async function getOrgContext() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) throw new Error("Not authenticated");
-
-  const tenantSlug = await getTenantSlug();
-  if (!tenantSlug) throw new Error("No tenant context");
-
-  const admin = createAdminClient();
-  const { data: org } = await admin
-    .from("organizations")
-    .select("id")
-    .eq("slug", tenantSlug)
-    .single();
-
-  if (!org) throw new Error("Organization not found");
-
-  const { data: membership } = await admin
-    .from("org_members")
-    .select("default_role")
-    .eq("org_id", org.id)
-    .eq("user_id", user.id)
-    .single();
-
-  if (!membership) throw new Error("Not a member of this organization");
-
-  return {
-    userId: user.id,
-    orgId: org.id,
-    role: membership.default_role as OrgRole,
-  };
-}
-
 async function getUserSpaceRole(
   spaceId: string,
   userId: string
 ): Promise<"admin" | "editor" | "viewer" | "none"> {
-  const admin = createAdminClient();
-  const { data: membership } = await admin
-    .from("space_members")
-    .select("role")
-    .eq("space_id", spaceId)
-    .eq("user_id", userId)
-    .maybeSingle();
+  const membership = await prisma.spaceMember.findUnique({
+    where: {
+      spaceId_userId: { spaceId, userId },
+    },
+    select: { role: true },
+  });
 
   if (membership) return membership.role as "admin" | "editor" | "viewer";
 
-  const { data: space } = await admin
-    .from("spaces")
-    .select("default_role")
-    .eq("id", spaceId)
-    .single();
+  const space = await prisma.space.findUnique({
+    where: { id: spaceId },
+    select: { defaultRole: true },
+  });
 
-  if (space && space.default_role !== "none") {
-    return space.default_role as "editor" | "viewer";
+  if (space && space.defaultRole !== "none") {
+    return space.defaultRole as "editor" | "viewer";
   }
 
   return "none";
@@ -77,17 +38,14 @@ async function canAccessPage(
   orgId: string,
   orgRole: OrgRole
 ): Promise<boolean> {
-  const admin = createAdminClient();
-  const { data: page } = await admin
-    .from("pages")
-    .select("space_id")
-    .eq("id", pageId)
-    .eq("org_id", orgId)
-    .single();
+  const page = await prisma.page.findFirst({
+    where: { id: pageId, orgId },
+    select: { spaceId: true },
+  });
 
   if (!page) return false;
 
-  const spaceRole = await getUserSpaceRole(page.space_id, userId);
+  const spaceRole = await getUserSpaceRole(page.spaceId, userId);
   return canViewSpace(orgRole, spaceRole);
 }
 
@@ -122,73 +80,66 @@ export async function createComment(
       return { success: false, error: "You don't have access to this page" };
     }
 
-    const admin = createAdminClient();
-
-    const { data: comment, error } = await admin
-      .from("comments")
-      .insert({
-        page_id: pageId,
-        org_id: ctx.orgId,
-        parent_comment_id: parentCommentId || null,
-        author_id: ctx.userId,
+    const comment = await prisma.comment.create({
+      data: {
+        pageId,
+        orgId: ctx.orgId,
+        parentCommentId: parentCommentId || null,
+        authorId: ctx.userId,
         content,
-      })
-      .select("id")
-      .single();
-
-    if (error || !comment) {
-      return { success: false, error: "Failed to create comment" };
-    }
+      },
+      select: { id: true },
+    });
 
     // Get author info for notification messages
-    const { data: authorData } = await admin.auth.admin.getUserById(ctx.userId);
-    const authorName =
-      authorData?.user?.user_metadata?.full_name ||
-      authorData?.user?.email ||
-      "Someone";
+    const author = await prisma.user.findUnique({
+      where: { id: ctx.userId },
+      select: { name: true, email: true },
+    });
+    const authorName = author?.name || author?.email || "Someone";
 
     // Get page title for notification message
-    const { data: page } = await admin
-      .from("pages")
-      .select("title")
-      .eq("id", pageId)
-      .single();
+    const page = await prisma.page.findUnique({
+      where: { id: pageId },
+      select: { title: true },
+    });
     const pageTitle = page?.title || "Untitled";
 
     // Create mention notifications
     if (mentionedUserIds && mentionedUserIds.length > 0) {
-      const mentionNotifications = mentionedUserIds
+      const mentionData = mentionedUserIds
         .filter((uid) => uid !== ctx.userId)
         .map((uid) => ({
-          user_id: uid,
-          org_id: ctx.orgId,
+          userId: uid,
+          orgId: ctx.orgId,
           type: "mention" as const,
-          reference_id: comment.id,
-          page_id: pageId,
+          referenceId: comment.id,
+          pageId,
           message: `${authorName} mentioned you in "${pageTitle}"`,
         }));
 
-      if (mentionNotifications.length > 0) {
-        await admin.from("notifications").insert(mentionNotifications);
+      if (mentionData.length > 0) {
+        await prisma.notification.createMany({ data: mentionData });
       }
     }
 
     // Create reply notification for parent comment author
     if (parentCommentId) {
-      const { data: parentComment } = await admin
-        .from("comments")
-        .select("author_id")
-        .eq("id", parentCommentId)
-        .single();
+      const parentComment = await prisma.comment.findUnique({
+        where: { id: parentCommentId },
+        select: { authorId: true },
+      });
 
-      if (parentComment && parentComment.author_id !== ctx.userId) {
-        await admin.from("notifications").insert({
-          user_id: parentComment.author_id,
-          org_id: ctx.orgId,
-          type: "reply" as const,
-          reference_id: comment.id,
-          page_id: pageId,
-          message: `${authorName} replied to your comment in "${pageTitle}"`,
+      if (parentComment && parentComment.authorId !== ctx.userId) {
+        await prisma.notification.create({
+          data: {
+            userId: parentComment.authorId,
+            orgId: ctx.orgId,
+            type: "reply",
+            referenceId: comment.id,
+            pageId,
+            message: `${authorName} replied to your comment in "${pageTitle}"`,
+          },
         });
       }
     }
@@ -207,33 +158,30 @@ export async function updateComment(
 ): Promise<{ success: boolean; error?: string }> {
   try {
     const ctx = await getOrgContext();
-    const admin = createAdminClient();
 
-    const { data: comment } = await admin
-      .from("comments")
-      .select("author_id, org_id")
-      .eq("id", commentId)
-      .single();
+    const comment = await prisma.comment.findUnique({
+      where: { id: commentId },
+      select: { authorId: true, orgId: true },
+    });
 
     if (!comment) return { success: false, error: "Comment not found" };
-    if (comment.org_id !== ctx.orgId)
+    if (comment.orgId !== ctx.orgId)
       return { success: false, error: "Comment not found" };
 
     // Only author or admin/owner can edit
     if (
-      comment.author_id !== ctx.userId &&
+      comment.authorId !== ctx.userId &&
       ctx.role !== "owner" &&
       ctx.role !== "admin"
     ) {
       return { success: false, error: "Insufficient permissions" };
     }
 
-    const { error } = await admin
-      .from("comments")
-      .update({ content, updated_at: new Date().toISOString() })
-      .eq("id", commentId);
+    await prisma.comment.update({
+      where: { id: commentId },
+      data: { content, updatedAt: new Date() },
+    });
 
-    if (error) return { success: false, error: "Failed to update comment" };
     return { success: true };
   } catch (e) {
     return { success: false, error: (e as Error).message };
@@ -247,21 +195,19 @@ export async function deleteComment(
 ): Promise<{ success: boolean; error?: string }> {
   try {
     const ctx = await getOrgContext();
-    const admin = createAdminClient();
 
-    const { data: comment } = await admin
-      .from("comments")
-      .select("author_id, org_id, parent_comment_id")
-      .eq("id", commentId)
-      .single();
+    const comment = await prisma.comment.findUnique({
+      where: { id: commentId },
+      select: { authorId: true, orgId: true, parentCommentId: true },
+    });
 
     if (!comment) return { success: false, error: "Comment not found" };
-    if (comment.org_id !== ctx.orgId)
+    if (comment.orgId !== ctx.orgId)
       return { success: false, error: "Comment not found" };
 
     // Only author or admin/owner can delete
     if (
-      comment.author_id !== ctx.userId &&
+      comment.authorId !== ctx.userId &&
       ctx.role !== "owner" &&
       ctx.role !== "admin"
     ) {
@@ -269,28 +215,21 @@ export async function deleteComment(
     }
 
     // Check if comment has replies — soft-delete if so
-    const { count } = await admin
-      .from("comments")
-      .select("*", { count: "exact", head: true })
-      .eq("parent_comment_id", commentId)
-      .eq("is_deleted", false);
+    const replyCount = await prisma.comment.count({
+      where: { parentCommentId: commentId, isDeleted: false },
+    });
 
-    if (count && count > 0) {
+    if (replyCount > 0) {
       // Soft-delete: mark as deleted but keep for thread structure
-      const { error } = await admin
-        .from("comments")
-        .update({ is_deleted: true, content: "[deleted]" })
-        .eq("id", commentId);
-
-      if (error) return { success: false, error: "Failed to delete comment" };
+      await prisma.comment.update({
+        where: { id: commentId },
+        data: { isDeleted: true, content: "[deleted]" },
+      });
     } else {
       // Hard-delete: no replies, safe to remove
-      const { error } = await admin
-        .from("comments")
-        .delete()
-        .eq("id", commentId);
-
-      if (error) return { success: false, error: "Failed to delete comment" };
+      await prisma.comment.delete({
+        where: { id: commentId },
+      });
     }
 
     return { success: true };
@@ -309,52 +248,30 @@ export async function getPageComments(pageId: string): Promise<Comment[]> {
       return [];
     }
 
-    const admin = createAdminClient();
-
-    const { data: comments } = await admin
-      .from("comments")
-      .select("*")
-      .eq("page_id", pageId)
-      .eq("org_id", ctx.orgId)
-      .order("created_at", { ascending: true });
-
-    if (!comments) return [];
-
-    // Fetch author details
-    const authorIds = [...new Set(comments.map((c) => c.author_id))];
-    const authorMap = new Map<
-      string,
-      { name: string; email: string }
-    >();
-
-    for (const authorId of authorIds) {
-      const { data } = await admin.auth.admin.getUserById(authorId);
-      authorMap.set(authorId, {
-        name: data?.user?.user_metadata?.full_name || "",
-        email: data?.user?.email || "unknown",
-      });
-    }
+    const comments = await prisma.comment.findMany({
+      where: { pageId, orgId: ctx.orgId },
+      include: {
+        author: { select: { name: true, email: true } },
+      },
+      orderBy: { createdAt: "asc" },
+    });
 
     // Build threaded structure
     const commentMap = new Map<string, Comment>();
     const roots: Comment[] = [];
 
     for (const c of comments) {
-      const author = authorMap.get(c.author_id) || {
-        name: "",
-        email: "unknown",
-      };
       const node: Comment = {
         id: c.id,
-        pageId: c.page_id,
-        parentCommentId: c.parent_comment_id,
-        authorId: c.author_id,
-        authorName: author.name,
-        authorEmail: author.email,
+        pageId: c.pageId,
+        parentCommentId: c.parentCommentId,
+        authorId: c.authorId,
+        authorName: c.author.name || "",
+        authorEmail: c.author.email || "unknown",
         content: c.content,
-        isDeleted: c.is_deleted,
-        createdAt: c.created_at,
-        updatedAt: c.updated_at,
+        isDeleted: c.isDeleted,
+        createdAt: c.createdAt.toISOString(),
+        updatedAt: c.updatedAt.toISOString(),
         replies: [],
       };
       commentMap.set(c.id, node);
@@ -379,16 +296,10 @@ export async function getPageComments(pageId: string): Promise<Comment[]> {
 export async function getCommentCount(pageId: string): Promise<number> {
   try {
     const ctx = await getOrgContext();
-    const admin = createAdminClient();
 
-    const { count } = await admin
-      .from("comments")
-      .select("*", { count: "exact", head: true })
-      .eq("page_id", pageId)
-      .eq("org_id", ctx.orgId)
-      .eq("is_deleted", false);
-
-    return count || 0;
+    return await prisma.comment.count({
+      where: { pageId, orgId: ctx.orgId, isDeleted: false },
+    });
   } catch {
     return 0;
   }
@@ -405,28 +316,19 @@ export interface MentionUser {
 export async function getOrgMembersForMention(): Promise<MentionUser[]> {
   try {
     const ctx = await getOrgContext();
-    const admin = createAdminClient();
 
-    const { data: members } = await admin
-      .from("org_members")
-      .select("user_id")
-      .eq("org_id", ctx.orgId);
+    const members = await prisma.orgMember.findMany({
+      where: { orgId: ctx.orgId },
+      include: {
+        user: { select: { id: true, name: true, email: true } },
+      },
+    });
 
-    if (!members) return [];
-
-    const users: MentionUser[] = [];
-    for (const m of members) {
-      const { data } = await admin.auth.admin.getUserById(m.user_id);
-      if (data?.user) {
-        users.push({
-          id: m.user_id,
-          name: data.user.user_metadata?.full_name || "",
-          email: data.user.email || "unknown",
-        });
-      }
-    }
-
-    return users;
+    return members.map((m) => ({
+      id: m.user.id,
+      name: m.user.name || "",
+      email: m.user.email || "unknown",
+    }));
   } catch {
     return [];
   }

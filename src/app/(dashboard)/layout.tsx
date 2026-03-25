@@ -13,9 +13,9 @@ export default async function DashboardLayout({
   return (
     <AppShell
       user={{
-        id: user.id,
+        id: user.id!,
         email: user.email || "",
-        fullName: user.user_metadata?.full_name || null,
+        fullName: user.name || null,
       }}
       orgId={orgId}
       orgSlug={orgSlug}

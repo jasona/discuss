@@ -1,0 +1,277 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ─── Auth.js models ─────────────────────────────────
+
+model User {
+  id            String    @id @default(uuid()) @db.Uuid
+  name          String?
+  email         String    @unique
+  emailVerified DateTime?
+  image         String?
+  passwordHash  String?
+
+  accounts Account[]
+  sessions Session[]
+
+  ownedOrgs        Organization[]  @relation("OrgOwner")
+  orgMemberships   OrgMember[]
+  spaceMemberships SpaceMember[]
+  createdSpaces    Space[]         @relation("SpaceCreator")
+  createdPages     Page[]          @relation("PageCreator")
+  updatedPages     Page[]          @relation("PageUpdater")
+  comments         Comment[]
+  notifications    Notification[]
+  invitationsSent  Invitation[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Account {
+  id                String  @id @default(uuid()) @db.Uuid
+  userId            String  @db.Uuid
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(uuid()) @db.Uuid
+  sessionToken String   @unique
+  userId       String   @db.Uuid
+  expires      DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+// ─── App enums ──────────────────────────────────────
+
+enum OrgRole {
+  owner
+  admin
+  editor
+  viewer
+}
+
+enum SpaceRole {
+  admin
+  editor
+  viewer
+}
+
+enum SpaceDefaultRole {
+  none
+  viewer
+  editor
+}
+
+enum PlanType {
+  free
+  starter
+  pro
+  enterprise
+}
+
+enum SubscriptionStatus {
+  active
+  past_due
+  canceled
+  trialing
+}
+
+enum NotificationType {
+  mention
+  invitation
+  reply
+}
+
+// ─── App models ─────────────────────────────────────
+
+model Organization {
+  id               String   @id @default(uuid()) @db.Uuid
+  name             String
+  slug             String   @unique
+  ownerId          String   @db.Uuid
+  stripeCustomerId String?
+  createdAt        DateTime @default(now())
+
+  owner         User           @relation("OrgOwner", fields: [ownerId], references: [id], onDelete: Restrict)
+  members       OrgMember[]
+  spaces        Space[]
+  pages         Page[]
+  comments      Comment[]
+  notifications Notification[]
+  subscription  Subscription?
+  invitations   Invitation[]
+}
+
+model OrgMember {
+  id          String   @id @default(uuid()) @db.Uuid
+  orgId       String   @db.Uuid
+  userId      String   @db.Uuid
+  defaultRole OrgRole  @default(viewer)
+  joinedAt    DateTime @default(now())
+
+  organization Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([orgId, userId])
+  @@index([orgId])
+}
+
+model Space {
+  id          String           @id @default(uuid()) @db.Uuid
+  orgId       String           @db.Uuid
+  name        String
+  description String?
+  icon        String?
+  defaultRole SpaceDefaultRole @default(viewer)
+  sortOrder   Int              @default(0)
+  isArchived  Boolean          @default(false)
+  createdBy   String           @db.Uuid
+  createdAt   DateTime         @default(now())
+
+  organization Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  creator      User         @relation("SpaceCreator", fields: [createdBy], references: [id], onDelete: SetNull)
+  members      SpaceMember[]
+  pages        Page[]
+
+  @@index([orgId])
+}
+
+model SpaceMember {
+  id      String    @id @default(uuid()) @db.Uuid
+  spaceId String    @db.Uuid
+  userId  String    @db.Uuid
+  role    SpaceRole @default(viewer)
+
+  space Space @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([spaceId, userId])
+  @@index([spaceId])
+}
+
+model Page {
+  id                 String   @id @default(uuid()) @db.Uuid
+  orgId              String   @db.Uuid
+  spaceId            String   @db.Uuid
+  parentPageId       String?  @db.Uuid
+  title              String   @default("Untitled")
+  contentJson        Json     @default("{}")
+  contentMarkdown    String   @default("")
+  contentTsvector    Unsupported("tsvector")?
+  createdBy          String   @db.Uuid
+  updatedBy          String   @db.Uuid
+  sortOrder          Int      @default(0)
+  isArchived         Boolean  @default(false)
+  isExternallyShared Boolean  @default(false)
+  externalShareSlug  String?  @unique
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @default(now()) @updatedAt
+
+  organization Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  space        Space        @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  parentPage   Page?        @relation("PageHierarchy", fields: [parentPageId], references: [id], onDelete: SetNull)
+  childPages   Page[]       @relation("PageHierarchy")
+  creator      User         @relation("PageCreator", fields: [createdBy], references: [id], onDelete: SetNull)
+  updater      User         @relation("PageUpdater", fields: [updatedBy], references: [id], onDelete: SetNull)
+  comments     Comment[]
+
+  @@index([orgId])
+  @@index([spaceId])
+}
+
+model Comment {
+  id              String   @id @default(uuid()) @db.Uuid
+  pageId          String   @db.Uuid
+  orgId           String   @db.Uuid
+  parentCommentId String?  @db.Uuid
+  authorId        String   @db.Uuid
+  content         String
+  isDeleted       Boolean  @default(false)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @default(now()) @updatedAt
+
+  page          Page         @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  organization  Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  parentComment Comment?     @relation("CommentThread", fields: [parentCommentId], references: [id], onDelete: Cascade)
+  replies       Comment[]    @relation("CommentThread")
+  author        User         @relation(fields: [authorId], references: [id], onDelete: SetNull)
+
+  @@index([pageId])
+}
+
+model Notification {
+  id          String           @id @default(uuid()) @db.Uuid
+  userId      String           @db.Uuid
+  orgId       String           @db.Uuid
+  type        NotificationType
+  referenceId String?          @db.Uuid
+  pageId      String?          @db.Uuid
+  message     String
+  isRead      Boolean          @default(false)
+  createdAt   DateTime         @default(now())
+
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organization Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model Subscription {
+  id                   String             @id @default(uuid()) @db.Uuid
+  orgId                String             @unique @db.Uuid
+  stripeSubscriptionId String?
+  stripePriceId        String?
+  plan                 PlanType           @default(free)
+  status               SubscriptionStatus @default(active)
+  currentPeriodStart   DateTime?
+  currentPeriodEnd     DateTime?
+  seatCount            Int                @default(0)
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @default(now()) @updatedAt
+
+  organization Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+}
+
+model Invitation {
+  id          String    @id @default(uuid()) @db.Uuid
+  orgId       String    @db.Uuid
+  email       String
+  invitedBy   String    @db.Uuid
+  defaultRole OrgRole   @default(viewer)
+  token       String    @unique
+  acceptedAt  DateTime?
+  expiresAt   DateTime
+  createdAt   DateTime  @default(now())
+
+  organization Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  inviter      User         @relation(fields: [invitedBy], references: [id], onDelete: SetNull)
+}

@@ -1,74 +1,32 @@
 "use server";
 
-import { createClient } from "@/lib/supabase/server";
-import { createAdminClient } from "@/lib/supabase/admin";
-import { getTenantSlug } from "@/lib/tenant.server";
+import { prisma } from "@/lib/db";
+import { getOrgContext } from "@/lib/actions/context";
 import type { OrgRole } from "@/lib/constants";
 import { canEditPage, canViewSpace } from "@/lib/permissions";
 
 // ─── Helpers ─────────────────────────────────────────────
 
-async function getOrgContext() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) throw new Error("Not authenticated");
-
-  const tenantSlug = await getTenantSlug();
-  if (!tenantSlug) throw new Error("No tenant context");
-
-  const admin = createAdminClient();
-  const { data: org } = await admin
-    .from("organizations")
-    .select("id")
-    .eq("slug", tenantSlug)
-    .single();
-
-  if (!org) throw new Error("Organization not found");
-
-  const { data: membership } = await admin
-    .from("org_members")
-    .select("default_role")
-    .eq("org_id", org.id)
-    .eq("user_id", user.id)
-    .single();
-
-  if (!membership) throw new Error("Not a member of this organization");
-
-  return {
-    userId: user.id,
-    orgId: org.id,
-    role: membership.default_role as OrgRole,
-  };
-}
-
 async function getUserSpaceRole(
   spaceId: string,
   userId: string
 ): Promise<"admin" | "editor" | "viewer" | "none"> {
-  const admin = createAdminClient();
-
   // Check explicit membership
-  const { data: membership } = await admin
-    .from("space_members")
-    .select("role")
-    .eq("space_id", spaceId)
-    .eq("user_id", userId)
-    .maybeSingle();
+  const membership = await prisma.spaceMember.findUnique({
+    where: { spaceId_userId: { spaceId, userId } },
+    select: { role: true },
+  });
 
   if (membership) return membership.role as "admin" | "editor" | "viewer";
 
   // Fall back to space default role
-  const { data: space } = await admin
-    .from("spaces")
-    .select("default_role")
-    .eq("id", spaceId)
-    .single();
+  const space = await prisma.space.findUnique({
+    where: { id: spaceId },
+    select: { defaultRole: true },
+  });
 
-  if (space && space.default_role !== "none") {
-    return space.default_role as "editor" | "viewer";
+  if (space && space.defaultRole !== "none") {
+    return space.defaultRole as "editor" | "viewer";
   }
 
   return "none";
@@ -99,6 +57,44 @@ export interface PageBreadcrumb {
   title: string;
 }
 
+// ─── Helper: map Prisma page row to Page interface ───────
+
+function mapPage(d: {
+  id: string;
+  orgId: string;
+  spaceId: string;
+  parentPageId: string | null;
+  title: string;
+  contentJson: unknown;
+  contentMarkdown: string;
+  sortOrder: number;
+  isArchived: boolean;
+  isExternallyShared: boolean;
+  externalShareSlug: string | null;
+  createdBy: string;
+  updatedBy: string;
+  createdAt: Date;
+  updatedAt: Date;
+}): Page {
+  return {
+    id: d.id,
+    orgId: d.orgId,
+    spaceId: d.spaceId,
+    parentPageId: d.parentPageId,
+    title: d.title,
+    contentJson: d.contentJson as Record<string, unknown>,
+    contentMarkdown: d.contentMarkdown,
+    sortOrder: d.sortOrder,
+    isArchived: d.isArchived,
+    isExternallyShared: d.isExternallyShared,
+    externalShareSlug: d.externalShareSlug,
+    createdBy: d.createdBy,
+    updatedBy: d.updatedBy,
+    createdAt: d.createdAt.toISOString(),
+    updatedAt: d.updatedAt.toISOString(),
+  };
+}
+
 // ─── Create Page ─────────────────────────────────────────
 
 export async function createPage(
@@ -114,40 +110,33 @@ export async function createPage(
       return { success: false, error: "Insufficient permissions" };
     }
 
-    const admin = createAdminClient();
-
     // Get next sort order among siblings
-    const { data: lastPage } = await admin
-      .from("pages")
-      .select("sort_order")
-      .eq("space_id", spaceId)
-      .eq("org_id", ctx.orgId)
-      .is("parent_page_id", parentPageId)
-      .order("sort_order", { ascending: false })
-      .limit(1)
-      .maybeSingle();
+    const lastPage = await prisma.page.findFirst({
+      where: {
+        spaceId,
+        orgId: ctx.orgId,
+        parentPageId: parentPageId,
+      },
+      orderBy: { sortOrder: "desc" },
+      select: { sortOrder: true },
+    });
 
-    const sortOrder = (lastPage?.sort_order ?? -1) + 1;
+    const sortOrder = (lastPage?.sortOrder ?? -1) + 1;
 
-    const { data: page, error } = await admin
-      .from("pages")
-      .insert({
-        org_id: ctx.orgId,
-        space_id: spaceId,
-        parent_page_id: parentPageId,
+    const page = await prisma.page.create({
+      data: {
+        orgId: ctx.orgId,
+        spaceId,
+        parentPageId,
         title: title || "Untitled",
-        content_json: {},
-        content_markdown: "",
-        sort_order: sortOrder,
-        created_by: ctx.userId,
-        updated_by: ctx.userId,
-      })
-      .select("id")
-      .single();
-
-    if (error || !page) {
-      return { success: false, error: "Failed to create page" };
-    }
+        contentJson: {},
+        contentMarkdown: "",
+        sortOrder,
+        createdBy: ctx.userId,
+        updatedBy: ctx.userId,
+      },
+      select: { id: true },
+    });
 
     return { success: true, pageId: page.id };
   } catch (e) {
@@ -167,39 +156,34 @@ export async function updatePage(
 ): Promise<{ success: boolean; error?: string }> {
   try {
     const ctx = await getOrgContext();
-    const admin = createAdminClient();
 
     // Get page to check space membership
-    const { data: page } = await admin
-      .from("pages")
-      .select("space_id")
-      .eq("id", pageId)
-      .eq("org_id", ctx.orgId)
-      .single();
+    const page = await prisma.page.findFirst({
+      where: { id: pageId, orgId: ctx.orgId },
+      select: { spaceId: true },
+    });
 
     if (!page) return { success: false, error: "Page not found" };
 
-    const spaceRole = await getUserSpaceRole(page.space_id, ctx.userId);
+    const spaceRole = await getUserSpaceRole(page.spaceId, ctx.userId);
     if (!canEditPage(ctx.role, spaceRole)) {
       return { success: false, error: "Insufficient permissions" };
     }
 
     const updateData: Record<string, unknown> = {
-      updated_by: ctx.userId,
+      updatedBy: ctx.userId,
     };
     if (updates.title !== undefined) updateData.title = updates.title;
     if (updates.contentJson !== undefined)
-      updateData.content_json = updates.contentJson;
+      updateData.contentJson = updates.contentJson;
     if (updates.contentMarkdown !== undefined)
-      updateData.content_markdown = updates.contentMarkdown;
+      updateData.contentMarkdown = updates.contentMarkdown;
 
-    const { error } = await admin
-      .from("pages")
-      .update(updateData)
-      .eq("id", pageId)
-      .eq("org_id", ctx.orgId);
+    await prisma.page.updateMany({
+      where: { id: pageId, orgId: ctx.orgId },
+      data: updateData,
+    });
 
-    if (error) return { success: false, error: "Failed to update page" };
     return { success: true };
   } catch (e) {
     return { success: false, error: (e as Error).message };
@@ -213,24 +197,21 @@ export async function archivePage(
 ): Promise<{ success: boolean; error?: string }> {
   try {
     const ctx = await getOrgContext();
-    const admin = createAdminClient();
 
-    const { data: page } = await admin
-      .from("pages")
-      .select("space_id")
-      .eq("id", pageId)
-      .eq("org_id", ctx.orgId)
-      .single();
+    const page = await prisma.page.findFirst({
+      where: { id: pageId, orgId: ctx.orgId },
+      select: { spaceId: true },
+    });
 
     if (!page) return { success: false, error: "Page not found" };
 
-    const spaceRole = await getUserSpaceRole(page.space_id, ctx.userId);
+    const spaceRole = await getUserSpaceRole(page.spaceId, ctx.userId);
     if (!canEditPage(ctx.role, spaceRole)) {
       return { success: false, error: "Insufficient permissions" };
     }
 
     // Recursively archive this page and all sub-pages
-    await archivePageRecursive(admin, pageId, ctx.orgId);
+    await archivePageRecursive(pageId, ctx.orgId);
 
     return { success: true };
   } catch (e) {
@@ -238,28 +219,21 @@ export async function archivePage(
   }
 }
 
-async function archivePageRecursive(
-  admin: ReturnType<typeof createAdminClient>,
-  pageId: string,
-  orgId: string
-) {
+async function archivePageRecursive(pageId: string, orgId: string) {
   // Archive the page itself
-  await admin
-    .from("pages")
-    .update({ is_archived: true })
-    .eq("id", pageId)
-    .eq("org_id", orgId);
+  await prisma.page.updateMany({
+    where: { id: pageId, orgId },
+    data: { isArchived: true },
+  });
 
   // Find and archive child pages
-  const { data: children } = await admin
-    .from("pages")
-    .select("id")
-    .eq("parent_page_id", pageId)
-    .eq("org_id", orgId)
-    .eq("is_archived", false);
+  const children = await prisma.page.findMany({
+    where: { parentPageId: pageId, orgId, isArchived: false },
+    select: { id: true },
+  });
 
-  for (const child of children || []) {
-    await archivePageRecursive(admin, child.id, orgId);
+  for (const child of children) {
+    await archivePageRecursive(child.id, orgId);
   }
 }
 
@@ -270,29 +244,24 @@ export async function restorePage(
 ): Promise<{ success: boolean; error?: string }> {
   try {
     const ctx = await getOrgContext();
-    const admin = createAdminClient();
 
-    const { data: page } = await admin
-      .from("pages")
-      .select("space_id")
-      .eq("id", pageId)
-      .eq("org_id", ctx.orgId)
-      .single();
+    const page = await prisma.page.findFirst({
+      where: { id: pageId, orgId: ctx.orgId },
+      select: { spaceId: true },
+    });
 
     if (!page) return { success: false, error: "Page not found" };
 
-    const spaceRole = await getUserSpaceRole(page.space_id, ctx.userId);
+    const spaceRole = await getUserSpaceRole(page.spaceId, ctx.userId);
     if (!canEditPage(ctx.role, spaceRole)) {
       return { success: false, error: "Insufficient permissions" };
     }
 
-    const { error } = await admin
-      .from("pages")
-      .update({ is_archived: false })
-      .eq("id", pageId)
-      .eq("org_id", ctx.orgId);
+    await prisma.page.updateMany({
+      where: { id: pageId, orgId: ctx.orgId },
+      data: { isArchived: false },
+    });
 
-    if (error) return { success: false, error: "Failed to restore page" };
     return { success: true };
   } catch (e) {
     return { success: false, error: (e as Error).message };
@@ -306,49 +275,36 @@ export async function deletePage(
 ): Promise<{ success: boolean; error?: string }> {
   try {
     const ctx = await getOrgContext();
-    const admin = createAdminClient();
 
-    const { data: page } = await admin
-      .from("pages")
-      .select("space_id, is_archived")
-      .eq("id", pageId)
-      .eq("org_id", ctx.orgId)
-      .single();
+    const page = await prisma.page.findFirst({
+      where: { id: pageId, orgId: ctx.orgId },
+      select: { spaceId: true, isArchived: true, parentPageId: true },
+    });
 
     if (!page) return { success: false, error: "Page not found" };
-    if (!page.is_archived) {
+    if (!page.isArchived) {
       return { success: false, error: "Page must be archived before deletion" };
     }
 
-    const spaceRole = await getUserSpaceRole(page.space_id, ctx.userId);
+    const spaceRole = await getUserSpaceRole(page.spaceId, ctx.userId);
     if (!canEditPage(ctx.role, spaceRole)) {
       return { success: false, error: "Insufficient permissions" };
     }
 
     // Re-parent children to this page's parent (or make them root)
-    const { data: pageData } = await admin
-      .from("pages")
-      .select("parent_page_id")
-      .eq("id", pageId)
-      .single();
-
-    await admin
-      .from("pages")
-      .update({ parent_page_id: pageData?.parent_page_id ?? null })
-      .eq("parent_page_id", pageId)
-      .eq("org_id", ctx.orgId);
+    await prisma.page.updateMany({
+      where: { parentPageId: pageId, orgId: ctx.orgId },
+      data: { parentPageId: page.parentPageId ?? null },
+    });
 
     // Delete comments on this page
-    await admin.from("comments").delete().eq("page_id", pageId);
+    await prisma.comment.deleteMany({ where: { pageId } });
 
     // Delete the page
-    const { error } = await admin
-      .from("pages")
-      .delete()
-      .eq("id", pageId)
-      .eq("org_id", ctx.orgId);
+    await prisma.page.deleteMany({
+      where: { id: pageId, orgId: ctx.orgId },
+    });
 
-    if (error) return { success: false, error: "Failed to delete page" };
     return { success: true };
   } catch (e) {
     return { success: false, error: (e as Error).message };
@@ -364,19 +320,16 @@ export async function movePage(
 ): Promise<{ success: boolean; error?: string }> {
   try {
     const ctx = await getOrgContext();
-    const admin = createAdminClient();
 
     // Check permissions on source page
-    const { data: page } = await admin
-      .from("pages")
-      .select("space_id")
-      .eq("id", pageId)
-      .eq("org_id", ctx.orgId)
-      .single();
+    const page = await prisma.page.findFirst({
+      where: { id: pageId, orgId: ctx.orgId },
+      select: { spaceId: true },
+    });
 
     if (!page) return { success: false, error: "Page not found" };
 
-    const sourceSpaceRole = await getUserSpaceRole(page.space_id, ctx.userId);
+    const sourceSpaceRole = await getUserSpaceRole(page.spaceId, ctx.userId);
     if (!canEditPage(ctx.role, sourceSpaceRole)) {
       return { success: false, error: "Insufficient permissions on source space" };
     }
@@ -394,38 +347,36 @@ export async function movePage(
         if (checkId === pageId) {
           return { success: false, error: "Cannot move a page under itself" };
         }
-        const { data: parent }: { data: { parent_page_id: string | null } | null } = await admin
-          .from("pages")
-          .select("parent_page_id")
-          .eq("id", checkId)
-          .single();
-        checkId = parent?.parent_page_id ?? null;
+        const parent: { parentPageId: string | null } | null =
+          await prisma.page.findUnique({
+            where: { id: checkId },
+            select: { parentPageId: true },
+          });
+        checkId = parent?.parentPageId ?? null;
       }
     }
 
     // Get next sort order in target location
-    const { data: lastPage } = await admin
-      .from("pages")
-      .select("sort_order")
-      .eq("space_id", newSpaceId)
-      .is("parent_page_id", newParentPageId)
-      .order("sort_order", { ascending: false })
-      .limit(1)
-      .maybeSingle();
+    const lastPage = await prisma.page.findFirst({
+      where: {
+        spaceId: newSpaceId,
+        parentPageId: newParentPageId,
+      },
+      orderBy: { sortOrder: "desc" },
+      select: { sortOrder: true },
+    });
 
-    const sortOrder = (lastPage?.sort_order ?? -1) + 1;
+    const sortOrder = (lastPage?.sortOrder ?? -1) + 1;
 
-    const { error } = await admin
-      .from("pages")
-      .update({
-        space_id: newSpaceId,
-        parent_page_id: newParentPageId,
-        sort_order: sortOrder,
-      })
-      .eq("id", pageId)
-      .eq("org_id", ctx.orgId);
+    await prisma.page.updateMany({
+      where: { id: pageId, orgId: ctx.orgId },
+      data: {
+        spaceId: newSpaceId,
+        parentPageId: newParentPageId,
+        sortOrder,
+      },
+    });
 
-    if (error) return { success: false, error: "Failed to move page" };
     return { success: true };
   } catch (e) {
     return { success: false, error: (e as Error).message };
@@ -447,16 +398,16 @@ export async function reorderPages(
       return { success: false, error: "Insufficient permissions" };
     }
 
-    const admin = createAdminClient();
-
-    // Update sort_order for each page
+    // Update sortOrder for each page
     for (let i = 0; i < orderedPageIds.length; i++) {
-      await admin
-        .from("pages")
-        .update({ sort_order: i, parent_page_id: parentPageId })
-        .eq("id", orderedPageIds[i])
-        .eq("space_id", spaceId)
-        .eq("org_id", ctx.orgId);
+      await prisma.page.updateMany({
+        where: {
+          id: orderedPageIds[i],
+          spaceId,
+          orgId: ctx.orgId,
+        },
+        data: { sortOrder: i, parentPageId },
+      });
     }
 
     return { success: true };
@@ -470,38 +421,18 @@ export async function reorderPages(
 export async function getPage(pageId: string): Promise<Page | null> {
   try {
     const ctx = await getOrgContext();
-    const admin = createAdminClient();
 
-    const { data } = await admin
-      .from("pages")
-      .select("*")
-      .eq("id", pageId)
-      .eq("org_id", ctx.orgId)
-      .single();
+    const data = await prisma.page.findFirst({
+      where: { id: pageId, orgId: ctx.orgId },
+    });
 
     if (!data) return null;
 
     // Check permissions
-    const spaceRole = await getUserSpaceRole(data.space_id, ctx.userId);
+    const spaceRole = await getUserSpaceRole(data.spaceId, ctx.userId);
     if (!canViewSpace(ctx.role, spaceRole)) return null;
 
-    return {
-      id: data.id,
-      orgId: data.org_id,
-      spaceId: data.space_id,
-      parentPageId: data.parent_page_id,
-      title: data.title,
-      contentJson: data.content_json as Record<string, unknown>,
-      contentMarkdown: data.content_markdown,
-      sortOrder: data.sort_order,
-      isArchived: data.is_archived,
-      isExternallyShared: data.is_externally_shared,
-      externalShareSlug: data.external_share_slug,
-      createdBy: data.created_by,
-      updatedBy: data.updated_by,
-      createdAt: data.created_at,
-      updatedAt: data.updated_at,
-    };
+    return mapPage(data);
   } catch {
     return null;
   }
@@ -516,35 +447,17 @@ export async function getSpacePages(spaceId: string): Promise<Page[]> {
 
     if (!canViewSpace(ctx.role, spaceRole)) return [];
 
-    const admin = createAdminClient();
-    const { data } = await admin
-      .from("pages")
-      .select("*")
-      .eq("space_id", spaceId)
-      .eq("org_id", ctx.orgId)
-      .eq("is_archived", false)
-      .is("parent_page_id", null)
-      .order("sort_order", { ascending: true });
+    const data = await prisma.page.findMany({
+      where: {
+        spaceId,
+        orgId: ctx.orgId,
+        isArchived: false,
+        parentPageId: null,
+      },
+      orderBy: { sortOrder: "asc" },
+    });
 
-    if (!data) return [];
-
-    return data.map((d) => ({
-      id: d.id,
-      orgId: d.org_id,
-      spaceId: d.space_id,
-      parentPageId: d.parent_page_id,
-      title: d.title,
-      contentJson: d.content_json as Record<string, unknown>,
-      contentMarkdown: d.content_markdown,
-      sortOrder: d.sort_order,
-      isArchived: d.is_archived,
-      isExternallyShared: d.is_externally_shared,
-      externalShareSlug: d.external_share_slug,
-      createdBy: d.created_by,
-      updatedBy: d.updated_by,
-      createdAt: d.created_at,
-      updatedAt: d.updated_at,
-    }));
+    return data.map(mapPage);
   } catch {
     return [];
   }
@@ -557,23 +470,21 @@ export async function getPageBreadcrumbs(
 ): Promise<PageBreadcrumb[]> {
   try {
     const ctx = await getOrgContext();
-    const admin = createAdminClient();
 
     const breadcrumbs: PageBreadcrumb[] = [];
     let currentId: string | null = pageId;
 
     while (currentId) {
-      const { data }: { data: { id: string; title: string; parent_page_id: string | null } | null } = await admin
-        .from("pages")
-        .select("id, title, parent_page_id")
-        .eq("id", currentId)
-        .eq("org_id", ctx.orgId)
-        .single();
+      const data: { id: string; title: string; parentPageId: string | null } | null =
+        await prisma.page.findFirst({
+          where: { id: currentId, orgId: ctx.orgId },
+          select: { id: true, title: true, parentPageId: true },
+        });
 
       if (!data) break;
 
       breadcrumbs.unshift({ id: data.id, title: data.title });
-      currentId = data.parent_page_id;
+      currentId = data.parentPageId;
     }
 
     return breadcrumbs;
@@ -587,18 +498,15 @@ export async function getPageBreadcrumbs(
 export async function canUserEditPage(pageId: string): Promise<boolean> {
   try {
     const ctx = await getOrgContext();
-    const admin = createAdminClient();
 
-    const { data: page } = await admin
-      .from("pages")
-      .select("space_id")
-      .eq("id", pageId)
-      .eq("org_id", ctx.orgId)
-      .single();
+    const page = await prisma.page.findFirst({
+      where: { id: pageId, orgId: ctx.orgId },
+      select: { spaceId: true },
+    });
 
     if (!page) return false;
 
-    const spaceRole = await getUserSpaceRole(page.space_id, ctx.userId);
+    const spaceRole = await getUserSpaceRole(page.spaceId, ctx.userId);
     return canEditPage(ctx.role, spaceRole);
   } catch {
     return false;
@@ -619,26 +527,21 @@ export async function getPageAuthorInfo(
 ): Promise<PageAuthorInfo | null> {
   try {
     const ctx = await getOrgContext();
-    const admin = createAdminClient();
 
-    const { data: page } = await admin
-      .from("pages")
-      .select("updated_by")
-      .eq("id", pageId)
-      .eq("org_id", ctx.orgId)
-      .single();
+    const page = await prisma.page.findFirst({
+      where: { id: pageId, orgId: ctx.orgId },
+      select: { updatedBy: true },
+    });
 
     if (!page) return null;
 
-    const { data: userData } = await admin.auth.admin.getUserById(
-      page.updated_by
-    );
+    const user = await prisma.user.findUnique({
+      where: { id: page.updatedBy },
+      select: { name: true, email: true },
+    });
 
     return {
-      updatedByName:
-        userData?.user?.user_metadata?.full_name ||
-        userData?.user?.email ||
-        null,
+      updatedByName: user?.name || user?.email || null,
       orgId: ctx.orgId,
       currentUserId: ctx.userId,
       currentUserRole: ctx.role,

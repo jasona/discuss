@@ -1,69 +1,40 @@
 "use server";
 
-import { createClient } from "@/lib/supabase/server";
-import { createAdminClient } from "@/lib/supabase/admin";
-import { getTenantSlug } from "@/lib/tenant.server";
+import { getOrgContext } from "@/lib/actions/context";
+import { prisma } from "@/lib/db";
 
 export async function getOrgSettings() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return null;
+  try {
+    const ctx = await getOrgContext();
 
-  const tenantSlug = await getTenantSlug();
-  if (!tenantSlug) return null;
+    const org = await prisma.organization.findUnique({
+      where: { id: ctx.orgId },
+      select: { id: true, name: true, slug: true, createdAt: true },
+    });
 
-  const admin = createAdminClient();
-  const { data: org } = await admin
-    .from("organizations")
-    .select("id, name, slug, created_at")
-    .eq("slug", tenantSlug)
-    .single();
-
-  return org;
+    return org;
+  } catch {
+    return null;
+  }
 }
 
 export async function updateOrgName(
   name: string
 ): Promise<{ success: boolean; error?: string }> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return { success: false, error: "Not authenticated" };
+  try {
+    const ctx = await getOrgContext();
 
-  const tenantSlug = await getTenantSlug();
-  if (!tenantSlug) return { success: false, error: "No tenant context" };
+    if (ctx.role !== "owner" && ctx.role !== "admin") {
+      return { success: false, error: "Insufficient permissions" };
+    }
 
-  const admin = createAdminClient();
+    await prisma.organization.update({
+      where: { id: ctx.orgId },
+      data: { name },
+    });
 
-  // Check user is owner or admin
-  const { data: org } = await admin
-    .from("organizations")
-    .select("id")
-    .eq("slug", tenantSlug)
-    .single();
-
-  if (!org) return { success: false, error: "Org not found" };
-
-  const { data: membership } = await admin
-    .from("org_members")
-    .select("default_role")
-    .eq("org_id", org.id)
-    .eq("user_id", user.id)
-    .single();
-
-  if (!membership || !["owner", "admin"].includes(membership.default_role)) {
-    return { success: false, error: "Insufficient permissions" };
+    return { success: true };
+  } catch (e) {
+    return { success: false, error: (e as Error).message };
   }
-
-  const { error } = await admin
-    .from("organizations")
-    .update({ name })
-    .eq("id", org.id);
-
-  if (error) return { success: false, error: "Failed to update name" };
-
-  return { success: true };
 }

@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { auth } from "@/lib/auth.config";
+import { prisma } from "@/lib/db";
 import { getRootUrl } from "@/lib/tenant";
 import { getTenantSlug } from "@/lib/tenant.server";
 
@@ -8,11 +9,8 @@ import { getTenantSlug } from "@/lib/tenant.server";
  * Returns null if not authenticated.
  */
 export async function getSession() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  return user;
+  const session = await auth();
+  return session?.user ?? null;
 }
 
 /**
@@ -21,7 +19,7 @@ export async function getSession() {
  */
 export async function requireAuth() {
   const user = await getSession();
-  if (!user) {
+  if (!user || !user.id) {
     redirect(getRootUrl("/login"));
   }
   return user;
@@ -40,32 +38,25 @@ export async function requireOrg() {
     redirect(getRootUrl("/login"));
   }
 
-  const supabase = await createClient();
-
-  // Verify user is a member of this org
-  const { data: membership } = await supabase
-    .from("org_members")
-    .select("*, organizations!inner(id, name, slug)")
-    .eq("organizations.slug", tenantSlug)
-    .eq("user_id", user.id)
-    .maybeSingle();
+  const membership = await prisma.orgMember.findFirst({
+    where: {
+      userId: user.id!,
+      organization: { slug: tenantSlug },
+    },
+    include: {
+      organization: { select: { id: true, name: true, slug: true } },
+    },
+  });
 
   if (!membership) {
-    // User is not a member of this org
     redirect(getRootUrl("/login"));
   }
 
-  const org = membership.organizations as {
-    id: string;
-    name: string;
-    slug: string;
-  };
-
   return {
     user,
-    orgId: org.id,
-    orgSlug: org.slug,
-    orgName: org.name,
-    role: membership.default_role,
+    orgId: membership.organization.id,
+    orgSlug: membership.organization.slug,
+    orgName: membership.organization.name,
+    role: membership.defaultRole,
   };
 }

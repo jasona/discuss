@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { createClient } from "@/lib/supabase/client";
 import { getTenantUrl } from "@/lib/tenant";
 import {
   DropdownMenu,
@@ -12,6 +11,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { ChevronsUpDown, Plus } from "lucide-react";
+import { getUserOrgs } from "@/lib/actions/user-orgs";
 
 interface Org {
   id: string;
@@ -28,27 +28,7 @@ export function OrgSwitcher({ currentOrgSlug, currentOrgName }: OrgSwitcherProps
   const [orgs, setOrgs] = useState<Org[]>([]);
 
   useEffect(() => {
-    async function loadOrgs() {
-      const supabase = createClient();
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) return;
-
-      const { data } = await supabase
-        .from("org_members")
-        .select("organizations(id, name, slug)")
-        .eq("user_id", user.id);
-
-      if (data) {
-        const orgList = data
-          .map((m) => m.organizations as unknown as Org)
-          .filter(Boolean);
-        setOrgs(orgList);
-      }
-    }
-
-    loadOrgs();
+    getUserOrgs().then(setOrgs);
   }, []);
 
   function switchOrg(slug: string) {
