@@ -109,21 +109,21 @@ export function NotificationBell() {
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger className="relative inline-flex items-center justify-center rounded-md p-2 hover:bg-muted">
+      <PopoverTrigger className="relative inline-flex h-7 w-7 items-center justify-center rounded-sm text-muted-foreground transition-colors duration-100 hover:bg-muted">
         <Bell className="h-4 w-4" />
         {unreadCount > 0 && (
-          <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-medium text-white">
+          <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-medium text-white">
             {unreadCount > 99 ? "99+" : unreadCount}
           </span>
         )}
       </PopoverTrigger>
       <PopoverContent align="end" className="w-80 p-0">
-        <div className="flex items-center justify-between border-b px-4 py-3">
+        <div className="flex items-center justify-between border-b border-content-border-light px-4 py-3">
           <h3 className="text-sm font-semibold">Notifications</h3>
           {unreadCount > 0 && (
             <button
               onClick={handleMarkAllRead}
-              className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+              className="flex items-center gap-1 text-[11px] text-muted-foreground transition-colors duration-100 hover:text-foreground"
             >
               <Check className="h-3 w-3" />
               Mark all read
@@ -145,20 +145,20 @@ export function NotificationBell() {
               <button
                 key={n.id}
                 onClick={() => handleClick(n)}
-                className={`flex w-full items-start gap-3 px-4 py-3 text-left hover:bg-muted/50 ${
-                  !n.isRead ? "bg-muted/30" : ""
+                className={`flex w-full items-start gap-3 border-b border-content-border-light px-4 py-3 text-left transition-colors duration-100 hover:bg-muted ${
+                  !n.isRead ? "bg-accent/30" : ""
                 }`}
               >
                 <NotificationIcon type={n.type} />
                 <div className="min-w-0 flex-1">
                   <p
-                    className={`text-sm ${
-                      !n.isRead ? "font-medium" : "text-muted-foreground"
+                    className={`text-xs leading-relaxed ${
+                      !n.isRead ? "font-medium text-foreground" : "text-muted-foreground"
                     }`}
                   >
                     {n.message}
                   </p>
-                  <p className="mt-0.5 text-xs text-muted-foreground">
+                  <p className="mt-0.5 text-[10px] text-muted-foreground">
                     {relativeTime(n.createdAt)}
                   </p>
                 </div>

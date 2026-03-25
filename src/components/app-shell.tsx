@@ -74,15 +74,11 @@ export function AppShell({
           <OrgSwitcher currentOrgSlug={orgSlug} currentOrgName={orgName} />
         </SidebarHeader>
 
-        <Separator />
-
         {/* Search trigger */}
         <div className="px-3 py-2">
-          <Button
-            variant="outline"
-            className="w-full justify-start gap-2 text-muted-foreground"
+          <button
+            className="flex w-full items-center gap-2 rounded-sm border border-sidebar-border px-2.5 py-1.5 text-sidebar-text-muted transition-colors duration-100 hover:border-sidebar-text-dim"
             onClick={() => {
-              // Trigger Cmd+K
               document.dispatchEvent(
                 new KeyboardEvent("keydown", {
                   key: "k",
@@ -92,30 +88,28 @@ export function AppShell({
               );
             }}
           >
-            <Search className="h-4 w-4" />
-            <span className="flex-1 text-left text-sm">Search...</span>
-            <kbd className="pointer-events-none hidden rounded border bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground sm:inline-block">
+            <Search className="h-3.5 w-3.5" />
+            <span className="flex-1 text-left text-xs">Search...</span>
+            <kbd className="pointer-events-none rounded-sm border border-sidebar-border px-1 font-mono text-[10px] text-sidebar-text-dim">
               ⌘K
             </kbd>
-          </Button>
+          </button>
         </div>
-
-        <Separator />
 
         <SidebarContent className="flex flex-1 flex-col overflow-hidden">
           <SpaceTree />
         </SidebarContent>
 
-        <SidebarFooter className="border-t p-2">
+        <SidebarFooter className="p-2">
           <DropdownMenu>
-            <DropdownMenuTrigger className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 hover:bg-muted">
-              <Avatar className="h-7 w-7">
-                <AvatarFallback className="text-xs">{initial}</AvatarFallback>
-              </Avatar>
+            <DropdownMenuTrigger className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 hover:bg-sidebar-hover">
+              <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-sm bg-sidebar-primary text-xs font-semibold text-sidebar-primary-foreground">
+                {displayName.split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase()}
+              </div>
               <div className="min-w-0 flex-1 text-left">
-                <p className="truncate text-sm font-medium">{displayName}</p>
+                <p className="truncate text-xs font-medium">{displayName}</p>
                 {user.fullName && (
-                  <p className="truncate text-xs text-muted-foreground">
+                  <p className="truncate text-[10px] text-sidebar-text-dim">
                     {user.email}
                   </p>
                 )}
@@ -183,8 +177,8 @@ export function AppShell({
 
       <SidebarInset>
         {/* Top bar */}
-        <header className="flex h-12 items-center justify-between border-b px-4">
-          <SidebarTrigger />
+        <header className="flex h-11 items-center justify-between border-b px-4">
+          <SidebarTrigger className="h-7 w-7 text-muted-foreground hover:bg-muted" />
           <NotificationBell />
         </header>
 

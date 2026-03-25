@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
+import { FileText } from "lucide-react";
 
 export default function SignupPage() {
   return (
@@ -85,7 +86,13 @@ function SignupForm() {
   return (
     <Card>
       <CardHeader className="text-center">
-        <CardTitle className="text-2xl font-bold">Create your account</CardTitle>
+        <div className="mb-4 flex items-center justify-center gap-2">
+          <div className="flex h-8 w-8 items-center justify-center rounded-sm bg-primary">
+            <FileText className="h-4 w-4 text-primary-foreground" />
+          </div>
+          <span className="text-xl font-semibold tracking-tight">discuss</span>
+        </div>
+        <CardTitle className="text-lg font-bold">Create your account</CardTitle>
         <CardDescription>
           {inviteToken
             ? "Sign up to accept your invitation"

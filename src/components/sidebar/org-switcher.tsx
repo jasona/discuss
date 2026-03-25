@@ -38,16 +38,16 @@ export function OrgSwitcher({ currentOrgSlug, currentOrgName }: OrgSwitcherProps
 
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger className="flex w-full items-center justify-between gap-2 rounded-md px-2 py-1.5 text-left hover:bg-muted">
+      <DropdownMenuTrigger className="flex w-full items-center justify-between gap-2 rounded-sm px-2 py-1.5 text-left hover:bg-sidebar-hover">
         <div className="flex items-center gap-2 truncate">
-          <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded bg-primary text-xs font-bold text-primary-foreground">
+          <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-sm bg-primary text-xs font-bold text-primary-foreground">
             {currentOrgName.charAt(0).toUpperCase()}
           </div>
           <span className="truncate text-sm font-medium">
             {currentOrgName}
           </span>
         </div>
-        <ChevronsUpDown className="h-4 w-4 shrink-0 text-muted-foreground" />
+        <ChevronsUpDown className="h-4 w-4 shrink-0 text-sidebar-text-dim" />
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="w-56">
         <DropdownMenuLabel>Organizations</DropdownMenuLabel>

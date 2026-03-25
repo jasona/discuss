@@ -18,7 +18,7 @@ import {
   createBillingPortalSession,
   type BillingInfo,
 } from "@/lib/actions/billing";
-import { CreditCard, ExternalLink, Loader2 } from "lucide-react";
+import { CreditCard, ExternalLink, Loader2, Check } from "lucide-react";
 
 const PLAN_NAMES: Record<string, string> = {
   free: "Free",
@@ -144,26 +144,28 @@ export default function BillingPage() {
           </div>
         </CardHeader>
         <CardContent>
-          <div className="grid gap-3 text-sm">
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Team members</span>
-              <span>
-                {billing.seatsUsed} / {formatLimit(billing.maxSeats)}
-              </span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Spaces</span>
-              <span>
-                {billing.spacesUsed} / {formatLimit(billing.maxSpaces)}
-              </span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">External shares</span>
-              <span>
-                {billing.externalSharesUsed} /{" "}
-                {formatLimit(billing.maxExternalShares)}
-              </span>
-            </div>
+          <div className="grid grid-cols-3 gap-4">
+            {[
+              { label: "Team members", used: billing.seatsUsed, max: billing.maxSeats },
+              { label: "Spaces", used: billing.spacesUsed, max: billing.maxSpaces },
+              { label: "External shares", used: billing.externalSharesUsed, max: billing.maxExternalShares },
+            ].map((stat) => (
+              <div key={stat.label}>
+                <div className="text-xs text-muted-foreground">{stat.label}</div>
+                <div className="mt-1 flex items-baseline gap-1">
+                  <span className="text-lg font-bold">{stat.used}</span>
+                  <span className="text-xs text-muted-foreground">/ {formatLimit(stat.max)}</span>
+                </div>
+                {stat.max !== Infinity && stat.max > 0 && (
+                  <div className="mt-1.5 h-1 overflow-hidden rounded-sm bg-muted">
+                    <div
+                      className="h-full rounded-sm bg-primary"
+                      style={{ width: `${Math.min((stat.used / stat.max) * 100, 100)}%` }}
+                    />
+                  </div>
+                )}
+              </div>
+            ))}
           </div>
         </CardContent>
       </Card>
@@ -208,29 +210,27 @@ export default function BillingPage() {
           <CardContent>
             <div className="grid gap-4 sm:grid-cols-2">
               {billing.plan === "free" && starterPriceId && (
-                <div className="rounded-lg border p-4">
-                  <h3 className="font-semibold">Starter</h3>
-                  <p className="mt-1 text-2xl font-bold">
-                    $4
-                    <span className="text-sm font-normal text-muted-foreground">
-                      /user/mo
-                    </span>
-                  </p>
-                  <ul className="mt-3 space-y-1 text-sm text-muted-foreground">
-                    <li>Up to 50 team members</li>
-                    <li>Unlimited spaces</li>
-                    <li>5 GB storage</li>
-                    <li>5 external shares</li>
+                <div className="rounded-sm border p-5">
+                  <h3 className="text-sm font-semibold">Starter</h3>
+                  <div className="mt-2 flex items-baseline gap-0.5">
+                    <span className="text-2xl font-bold">$4</span>
+                    <span className="text-xs text-muted-foreground">/user/mo</span>
+                  </div>
+                  <ul className="mt-4 space-y-2">
+                    {["Up to 50 members", "Unlimited spaces", "5 GB storage", "5 external shares"].map((f) => (
+                      <li key={f} className="flex items-center gap-2 text-xs text-muted-foreground">
+                        <Check className="h-3.5 w-3.5 shrink-0 text-primary" />
+                        {f}
+                      </li>
+                    ))}
                   </ul>
                   <Button
                     className="mt-4 w-full"
                     onClick={() => handleUpgrade(starterPriceId)}
                     disabled={checkoutLoading === starterPriceId}
                   >
-                    {checkoutLoading === starterPriceId ? (
+                    {checkoutLoading === starterPriceId && (
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    ) : (
-                      <CreditCard className="mr-2 h-4 w-4" />
                     )}
                     Upgrade to Starter
                   </Button>
@@ -239,29 +239,27 @@ export default function BillingPage() {
 
               {(billing.plan === "free" || billing.plan === "starter") &&
                 proPriceId && (
-                  <div className="rounded-lg border border-primary p-4">
-                    <h3 className="font-semibold">Pro</h3>
-                    <p className="mt-1 text-2xl font-bold">
-                      $8
-                      <span className="text-sm font-normal text-muted-foreground">
-                        /user/mo
-                      </span>
-                    </p>
-                    <ul className="mt-3 space-y-1 text-sm text-muted-foreground">
-                      <li>Unlimited team members</li>
-                      <li>Unlimited spaces</li>
-                      <li>50 GB storage</li>
-                      <li>Unlimited external shares</li>
+                  <div className="rounded-sm border border-primary p-5 shadow-[0_0_0_1px_var(--primary)]">
+                    <h3 className="text-sm font-semibold">Pro</h3>
+                    <div className="mt-2 flex items-baseline gap-0.5">
+                      <span className="text-2xl font-bold">$8</span>
+                      <span className="text-xs text-muted-foreground">/user/mo</span>
+                    </div>
+                    <ul className="mt-4 space-y-2">
+                      {["Unlimited members", "Unlimited spaces", "50 GB storage", "Unlimited shares"].map((f) => (
+                        <li key={f} className="flex items-center gap-2 text-xs text-muted-foreground">
+                          <Check className="h-3.5 w-3.5 shrink-0 text-primary" />
+                          {f}
+                        </li>
+                      ))}
                     </ul>
                     <Button
                       className="mt-4 w-full"
                       onClick={() => handleUpgrade(proPriceId)}
                       disabled={checkoutLoading === proPriceId}
                     >
-                      {checkoutLoading === proPriceId ? (
+                      {checkoutLoading === proPriceId && (
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      ) : (
-                        <CreditCard className="mr-2 h-4 w-4" />
                       )}
                       Upgrade to Pro
                     </Button>

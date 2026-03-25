@@ -74,10 +74,10 @@ export function EditorToolbar({
   if (!editor) return null;
 
   return (
-    <div className="sticky top-0 z-10 flex flex-wrap items-center gap-0.5 rounded-t-lg border-b bg-background/95 px-2 py-1 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+    <div className="sticky top-0 z-10 flex flex-wrap items-center gap-0.5 border-b border-content-border-light bg-background px-2 py-1">
       {/* Text style dropdown */}
       <DropdownMenu>
-        <DropdownMenuTrigger className="inline-flex h-8 items-center gap-1 rounded-md px-2 text-xs hover:bg-muted">
+        <DropdownMenuTrigger className="inline-flex h-7 items-center gap-1 rounded-sm px-2 text-xs text-muted-foreground hover:bg-muted">
           <Pilcrow className="h-3.5 w-3.5" />
           <span className="hidden sm:inline">Style</span>
         </DropdownMenuTrigger>
@@ -120,7 +120,7 @@ export function EditorToolbar({
         </DropdownMenuContent>
       </DropdownMenu>
 
-      <Separator orientation="vertical" className="mx-0.5 h-6" />
+      <Separator orientation="vertical" className="mx-1 h-4" />
 
       {/* Inline formatting */}
       <Toggle
@@ -164,7 +164,7 @@ export function EditorToolbar({
         <LinkIcon className="h-3.5 w-3.5" />
       </Toggle>
 
-      <Separator orientation="vertical" className="mx-0.5 h-6" />
+      <Separator orientation="vertical" className="mx-1 h-4" />
 
       {/* Lists */}
       <Toggle
@@ -192,7 +192,7 @@ export function EditorToolbar({
         <ListTodo className="h-3.5 w-3.5" />
       </Toggle>
 
-      <Separator orientation="vertical" className="mx-0.5 h-6" />
+      <Separator orientation="vertical" className="mx-1 h-4" />
 
       {/* Block elements */}
       <Toggle
@@ -214,7 +214,7 @@ export function EditorToolbar({
       <Button
         variant="ghost"
         size="sm"
-        className="h-8 w-8 p-0"
+        className="h-7 w-7 p-0"
         onClick={() => editor.chain().focus().setHorizontalRule().run()}
         title="Horizontal rule"
       >
@@ -225,7 +225,7 @@ export function EditorToolbar({
       <Button
         variant="ghost"
         size="sm"
-        className="h-8 w-8 p-0"
+        className="h-7 w-7 p-0"
         onClick={() =>
           editor
             .chain()
@@ -242,7 +242,7 @@ export function EditorToolbar({
       <Button
         variant="ghost"
         size="sm"
-        className="h-8 w-8 p-0"
+        className="h-7 w-7 p-0"
         onClick={() => imageInputRef.current?.click()}
         title="Upload image"
       >
@@ -260,11 +260,11 @@ export function EditorToolbar({
         }}
       />
 
-      <Separator orientation="vertical" className="mx-0.5 h-6" />
+      <Separator orientation="vertical" className="mx-1 h-4" />
 
       {/* More dropdown */}
       <DropdownMenu>
-        <DropdownMenuTrigger className="inline-flex h-8 w-8 items-center justify-center rounded-md hover:bg-muted">
+        <DropdownMenuTrigger className="inline-flex h-7 w-7 items-center justify-center rounded-sm hover:bg-muted">
           <MoreHorizontal className="h-3.5 w-3.5" />
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
@@ -296,14 +296,23 @@ export function EditorToolbar({
       />
 
       {/* Save status */}
-      <div className="ml-auto">
+      <div className="ml-auto flex items-center gap-1.5">
         <span
-          className={`text-xs ${
+          className={`h-1.5 w-1.5 rounded-full ${
+            saveStatus === "saved"
+              ? "bg-primary"
+              : saveStatus === "saving"
+                ? "bg-primary animate-pulse"
+                : "bg-destructive"
+          }`}
+        />
+        <span
+          className={`text-[11px] ${
             saveStatus === "saved"
               ? "text-muted-foreground"
               : saveStatus === "saving"
-                ? "text-yellow-600"
-                : "text-orange-600"
+                ? "text-primary"
+                : "text-destructive"
           }`}
         >
           {saveStatus === "saved"

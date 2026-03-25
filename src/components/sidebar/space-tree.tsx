@@ -104,13 +104,13 @@ function SortablePageItem({
     <div ref={setNodeRef} style={style} {...attributes}>
       <Collapsible open={isOpen} onOpenChange={setIsOpen}>
         <div
-          className={`group flex items-center gap-1 rounded-md px-1 py-0.5 text-sm hover:bg-muted ${
-            isActive ? "bg-accent text-accent-foreground" : ""
+          className={`group flex items-center gap-1 rounded-sm px-1 py-0.5 text-sm hover:bg-sidebar-hover border-l-2 ${
+            isActive ? "bg-sidebar-accent text-sidebar-accent-foreground border-sidebar-primary" : "border-transparent"
           }`}
           style={{ paddingLeft: `${depth * 12 + 4}px` }}
         >
           {hasChildren ? (
-            <CollapsibleTrigger className="flex h-5 w-5 shrink-0 items-center justify-center rounded hover:bg-muted-foreground/10">
+            <CollapsibleTrigger className="flex h-5 w-5 shrink-0 items-center justify-center rounded hover:bg-sidebar-hover-foreground/10">
               <ChevronRight
                 className={`h-3.5 w-3.5 transition-transform ${
                   isOpen ? "rotate-90" : ""
@@ -126,13 +126,13 @@ function SortablePageItem({
             onClick={() => onNavigate(spaceId, node.id)}
             {...listeners}
           >
-            <FileText className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+            <FileText className={`h-3.5 w-3.5 shrink-0 ${isActive ? "text-sidebar-accent-foreground" : "text-sidebar-text-muted"}`} />
             <span className="truncate">{node.title || "Untitled"}</span>
           </button>
 
           <div className="hidden shrink-0 items-center gap-0.5 group-hover:flex">
             <button
-              className="flex h-5 w-5 items-center justify-center rounded hover:bg-muted-foreground/10"
+              className="flex h-5 w-5 items-center justify-center rounded hover:bg-sidebar-hover-foreground/10"
               onClick={(e) => {
                 e.stopPropagation();
                 onNewSubPage(spaceId, node.id);
@@ -142,7 +142,7 @@ function SortablePageItem({
               <Plus className="h-3 w-3" />
             </button>
             <DropdownMenu>
-              <DropdownMenuTrigger className="flex h-5 w-5 items-center justify-center rounded hover:bg-muted-foreground/10">
+              <DropdownMenuTrigger className="flex h-5 w-5 items-center justify-center rounded hover:bg-sidebar-hover-foreground/10">
                 <MoreHorizontal className="h-3 w-3" />
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-40">
@@ -205,8 +205,8 @@ function SpaceSection({
 
   return (
     <Collapsible open={isOpen} onOpenChange={setIsOpen}>
-      <div className="group flex items-center gap-1 rounded-md px-1 py-1 hover:bg-muted">
-        <CollapsibleTrigger className="flex h-5 w-5 shrink-0 items-center justify-center rounded hover:bg-muted-foreground/10">
+      <div className="group flex items-center gap-1 rounded-sm px-1 py-1 hover:bg-sidebar-hover">
+        <CollapsibleTrigger className="flex h-5 w-5 shrink-0 items-center justify-center rounded hover:bg-sidebar-hover-foreground/10">
           <ChevronRight
             className={`h-3.5 w-3.5 transition-transform ${
               isOpen ? "rotate-90" : ""
@@ -226,7 +226,7 @@ function SpaceSection({
 
         <div className="hidden shrink-0 items-center gap-0.5 group-hover:flex">
           <button
-            className="flex h-5 w-5 items-center justify-center rounded hover:bg-muted-foreground/10"
+            className="flex h-5 w-5 items-center justify-center rounded hover:bg-sidebar-hover-foreground/10"
             onClick={(e) => {
               e.stopPropagation();
               onNewPage(space.id);
@@ -236,7 +236,7 @@ function SpaceSection({
             <Plus className="h-3 w-3" />
           </button>
           <DropdownMenu>
-            <DropdownMenuTrigger className="flex h-5 w-5 items-center justify-center rounded hover:bg-muted-foreground/10">
+            <DropdownMenuTrigger className="flex h-5 w-5 items-center justify-center rounded hover:bg-sidebar-hover-foreground/10">
               <MoreHorizontal className="h-3 w-3" />
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-44">
@@ -278,7 +278,7 @@ function SpaceSection({
 
         {space.pages.length === 0 && (
           <button
-            className="flex w-full items-center gap-1.5 rounded-md px-1 py-1 pl-8 text-xs text-muted-foreground hover:bg-muted"
+            className="flex w-full items-center gap-1.5 rounded-sm px-1 py-1 pl-8 text-xs text-sidebar-text-muted hover:bg-sidebar-hover"
             onClick={() => onNewPage(space.id)}
           >
             <Plus className="h-3 w-3" />
@@ -568,9 +568,9 @@ export function SpaceTree() {
         </div>
       </ScrollArea>
 
-      <div className="border-t px-2 py-2">
+      <div className="px-2 py-2">
         <button
-          className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm text-muted-foreground hover:bg-muted hover:text-foreground"
+          className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm text-sidebar-text-muted hover:bg-sidebar-hover hover:text-sidebar-foreground"
           onClick={() => setShowNewSpace(true)}
         >
           <Plus className="h-4 w-4" />

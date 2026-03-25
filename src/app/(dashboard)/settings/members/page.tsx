@@ -133,14 +133,12 @@ export default function MembersPage() {
     }
   }
 
-  const roleBadgeVariant = (role: string) => {
+  const roleBadgeClass = (role: string) => {
     switch (role) {
-      case "owner":
-        return "default" as const;
-      case "admin":
-        return "secondary" as const;
-      default:
-        return "outline" as const;
+      case "owner": return "badge-owner";
+      case "admin": return "badge-admin";
+      case "editor": return "badge-editor";
+      default: return "badge-viewer";
     }
   };
 
@@ -228,19 +226,20 @@ export default function MembersPage() {
               <TableRow key={member.id}>
                 <TableCell>
                   <div className="flex items-center gap-3">
-                    <Avatar className="h-8 w-8">
-                      <AvatarFallback className="text-xs">
-                        {(member.fullName || member.email)
-                          .charAt(0)
-                          .toUpperCase()}
-                      </AvatarFallback>
-                    </Avatar>
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-sm bg-sidebar text-xs font-semibold text-sidebar-foreground">
+                      {(member.fullName || member.email)
+                        .split(" ")
+                        .map((n: string) => n[0])
+                        .join("")
+                        .slice(0, 2)
+                        .toUpperCase()}
+                    </div>
                     <div>
                       <p className="text-sm font-medium">
                         {member.fullName || member.email}
                       </p>
                       {member.fullName && (
-                        <p className="text-xs text-muted-foreground">
+                        <p className="font-mono text-xs text-muted-foreground">
                           {member.email}
                         </p>
                       )}
@@ -248,9 +247,9 @@ export default function MembersPage() {
                   </div>
                 </TableCell>
                 <TableCell>
-                  <Badge variant={roleBadgeVariant(member.role)}>
+                  <span className={`inline-flex items-center rounded-sm px-2 py-0.5 text-xs font-medium ${roleBadgeClass(member.role)}`}>
                     {member.role}
-                  </Badge>
+                  </span>
                 </TableCell>
                 <TableCell className="text-sm text-muted-foreground">
                   {new Date(member.joinedAt).toLocaleDateString()}

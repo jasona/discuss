@@ -261,7 +261,7 @@ export function PageEditor({ page, orgId, updatedByName }: PageEditorProps) {
         </span>
       </div>
 
-      <div className="mt-4 rounded-lg border">
+      <div className="mt-5">
         <EditorToolbar
           editor={editor}
           sourceMode={sourceMode}
